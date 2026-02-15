@@ -23,3 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 src-tauri/target/
+vscode_history_flatpak/*
+vscode_history_oss/-4a8c90a/*

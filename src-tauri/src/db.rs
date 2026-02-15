@@ -246,26 +246,14 @@ impl Database {
         focal_length: Option<&str>,
         gps_lat: Option<f64>,
         gps_lon: Option<f64>,
-    ) -> SqlResult<PhotoRecord> {
+    ) -> SqlResult<()> {
         let conn = self.conn.lock().unwrap();
-        
-        let sql = format!(
+        conn.execute(
             r#"
-            INSERT INTO photos (library_id, path, filename, folder_rel, taken_at, modified_at, media_type, size_bytes, width, height,
+            INSERT OR REPLACE INTO photos (library_id, path, filename, folder_rel, taken_at, modified_at, media_type, size_bytes, width, height,
                                            camera_make, camera_model, lens, iso, shutter_speed, aperture, focal_length, gps_lat, gps_lon)
             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
-            ON CONFLICT(library_id, path) DO UPDATE SET
-                modified_at=excluded.modified_at,
-                size_bytes=excluded.size_bytes,
-                width=excluded.width,
-                height=excluded.height
-            RETURNING {}
             "#,
-            Self::photo_select_cols()
-        );
-
-        conn.query_row(
-            &sql,
             rusqlite::params![
                 library_id,
                 path,
@@ -287,8 +275,8 @@ impl Database {
                 gps_lat,
                 gps_lon,
             ],
-            |row| Self::photo_from_row(row, String::from("Library")) // Source name is hard to get here without query, using placeholder
-        )
+        )?;
+        Ok(())
     }
 
     /// Helper: standard columns for photo queries

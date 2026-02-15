@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::mpsc;
 
-pub struct AppState {
+pub(crate) struct AppState {
     db: Mutex<Option<Database>>,
     library_root: Mutex<Option<String>>,
     library_roots: Mutex<Vec<(i64, String)>>,
@@ -41,10 +41,7 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
 
     let db = Database::new(&db_path).map_err(|e| e.to_string())?;
     let library_id = db.get_or_create_library(&root_str).map_err(|e| e.to_string())?;
-    
-    // For now, we clear existing photos to avoid duplicates during re-scan. 
-    // Ideally we would do a diff, but clearing is safer for MVP.
-    // db.clear_photos_for_library(library_id).map_err(|e| e.to_string())?;
+    db.clear_photos_for_library(library_id).map_err(|e| e.to_string())?;
 
     app.emit("index-progress", IndexProgress {
         phase: "scanning".to_string(),
@@ -53,22 +50,12 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
     })
     .ok();
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<(Vec<crate::db::PhotoRecord>, u64, u64)>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<(u64, u64)>();
     let path_clone = path.clone();
     let app_handle = app.clone();
-    
-    // Spawn listener to handle DB insertion and event emission on the main thread (or async context)
     let recv_handle = tauri::async_runtime::spawn(async move {
-        // We need a separate connection for the async listener to insert data? 
-        // Or we can just emit the data and let the frontend handle it?
-        // Actually, we should insert here or in the blocking thread. 
-        // Let's insert in the blocking thread where we have the data, and just emit here.
-        // Wait, DB insertion should happen in the blocking thread to avoid locking async runtime.
-        // So the channel will just carry the "Saved" photos to emit to frontend.
-        
-        while let Some((photos, current, total)) = rx.recv().await {
-             app_handle.emit("photos-added", &photos).ok();
-             app_handle
+        while let Some((current, total)) = rx.recv().await {
+            app_handle
                 .emit("index-progress", IndexProgress {
                     phase: "indexing".to_string(),
                     current,
@@ -78,80 +65,67 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
         }
     });
 
-    let scanned_count = tauri::async_runtime::spawn_blocking(move || {
+    let scanned = tauri::async_runtime::spawn_blocking(move || {
         let root = path_clone.canonicalize().unwrap_or_else(|_| path_clone.clone());
         let paths = scan::collect_media_paths(&path_clone);
         let total = paths.len() as u64;
-        
-        // We need a DB connection here in the thread
-        let db = match Database::new(&db_path) {
-            Ok(d) => d,
-            Err(e) => {
-                eprintln!("Failed to open DB in thread: {}", e);
-                return 0;
-            }
-        };
-
-        const CHUNK: usize = 20; // Smaller chunk for faster feedback
-        let mut processed = 0;
-
+        let _ = tx.send((0, total));
+        let mut all: Vec<scan::ScannedFile> = Vec::new();
+        const CHUNK: usize = 50;
         for chunk in paths.chunks(CHUNK) {
             let batch = scan::process_paths_batch(chunk, &root);
-            let mut saved_photos = Vec::new();
-
-            for s in &batch {
-                 match db.insert_photo(
-                    library_id,
-                    &s.path,
-                    &s.filename,
-                    &s.folder_rel,
-                    s.taken_at.as_deref(),
-                    &s.modified_at,
-                    &s.media_type,
-                    s.size_bytes,
-                    s.width,
-                    s.height,
-                    s.camera_make.as_deref(),
-                    s.camera_model.as_deref(),
-                    s.lens.as_deref(),
-                    s.iso,
-                    s.shutter_speed.as_deref(),
-                    s.aperture.as_deref(),
-                    s.focal_length.as_deref(),
-                    s.gps_lat,
-                    s.gps_lon,
-                ) {
-                    Ok(record) => saved_photos.push(record),
-                    Err(e) => eprintln!("Failed to insert photo {}: {}", s.path, e),
-                }
-            }
-            
-            processed += batch.len();
-            let _ = tx.send((saved_photos, processed as u64, total));
+            all.extend(batch);
+            let _ = tx.send((all.len() as u64, total));
         }
-        processed
+        all
     })
     .await
     .map_err(|e| e.to_string())?;
 
     let _ = recv_handle.await;
 
+    let total = scanned.len();
+    for s in &scanned {
+        db.insert_photo(
+            library_id,
+            &s.path,
+            &s.filename,
+            &s.folder_rel,
+            s.taken_at.as_deref(),
+            &s.modified_at,
+            &s.media_type,
+            s.size_bytes,
+            s.width,
+            s.height,
+            s.camera_make.as_deref(),
+            s.camera_model.as_deref(),
+            s.lens.as_deref(),
+            s.iso,
+            s.shutter_speed.as_deref(),
+            s.aperture.as_deref(),
+            s.focal_length.as_deref(),
+            s.gps_lat,
+            s.gps_lon,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     app.emit("index-progress", IndexProgress {
         phase: "done".to_string(),
-        current: scanned_count as u64,
-        total: Some(scanned_count as u64),
+        current: total as u64,
+        total: Some(total as u64),
     })
     .ok();
 
     if let Some(state) = app.try_state::<AppState>() {
         *state.db.lock().unwrap() = Some(db);
         *state.library_root.lock().unwrap() = Some(root_str.clone());
-        eprintln!("✓ App state set: library_root = {}, library_id = {}, total photos = {}", root_str, library_id, scanned_count);
+        eprintln!("✓ App state set: library_root = {}, library_id = {}, total photos = {}", root_str, library_id, total);
     }
 
     Ok(serde_json::json!({
         "libraryPath": root_str,
-        "totalPhotos": scanned_count,
+        "totalPhotos": total,
         "libraryId": library_id
     }))
 }
@@ -218,8 +192,6 @@ pub async fn get_photos(
     let library_id = db.get_or_create_library(root).map_err(|e| e.to_string())?;
 
     let limit = params.as_ref().and_then(|p| p.limit).unwrap_or(100);
-    // Security hard cap to prevent DOS
-    let limit = limit.min(10000);
     let offset = params.as_ref().and_then(|p| p.offset).unwrap_or(0);
     let year = params.as_ref().and_then(|p| p.year);
     let month = params.as_ref().and_then(|p| p.month);
@@ -242,7 +214,7 @@ pub async fn search_photos(
     let root = root_guard.as_ref().ok_or("No library path")?;
 
     let library_id = db.get_or_create_library(root).map_err(|e| e.to_string())?;
-    let limit = limit.unwrap_or(100).min(1000);
+    let limit = limit.unwrap_or(100);
 
     db.search_photos(library_id, &query, limit)
         .map_err(|e| e.to_string())
@@ -430,63 +402,21 @@ pub async fn get_all_photos(
         return Ok(Vec::new());
     }
 
-    let limit = params.as_ref().and_then(|p| p.limit).unwrap_or(10000).min(20000);
+    let limit = params.as_ref().and_then(|p| p.limit).unwrap_or(10000);
     let offset = params.as_ref().and_then(|p| p.offset).unwrap_or(0);
 
     db.get_photos_all_libraries(&library_ids, limit, offset)
         .map_err(|e| e.to_string())
 }
 
-/// Add a new library path to be indexed and tracked
-#[tauri::command]
-pub async fn add_library_path(
-    app: AppHandle,
-    path: String,
-) -> Result<serde_json::Value, String> {
-    // This reuses select_and_index logic but is explicitly for adding a secondary path
-    select_and_index(app, path).await
-}
-
-/// Remove a library path (and its photos) from the index
-#[tauri::command]
-pub async fn remove_library_path(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
-    let db_guard = state.db.lock().unwrap();
-    let db = db_guard.as_ref().ok_or("No library loaded")?;
-    
-    // Check if library exists
-    let libs = db.get_all_libraries().map_err(|e| e.to_string())?;
-    let lib = libs.into_iter().find(|l| l.root_path == path).ok_or("Library not found")?;
-
-    // Delete from DB
-    // We need a method in DB to delete library and all its photos.
-    // For now we just clear photos.
-    db.clear_photos_for_library(lib.id).map_err(|e| e.to_string())?;
-    
-    // Also remove from state if it's there
-    let mut roots = state.library_roots.lock().unwrap();
-    roots.retain(|(_, p)| p != &path);
-    
-    Ok(())
-}
-
 /// Get list of all indexed libraries/sources
 #[tauri::command]
-pub async fn get_library_paths(
+pub async fn get_libraries(
     state: State<'_, AppState>,
 ) -> Result<Vec<crate::db::LibraryInfo>, String> {
     let db_guard = state.db.lock().unwrap();
     let db = db_guard.as_ref().ok_or("No library loaded")?;
     db.get_all_libraries().map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn get_libraries(
-    state: State<'_, AppState>,
-) -> Result<Vec<crate::db::LibraryInfo>, String> {
-    get_library_paths(state).await
 }
 
 /// Toggle favorite status on a photo
