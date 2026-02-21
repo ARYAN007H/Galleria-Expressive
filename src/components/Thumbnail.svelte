@@ -4,6 +4,7 @@
     import type { Photo } from "../lib/store";
     import { getThumbnail } from "../lib/store";
     import { icons } from "../lib/icons";
+    import { convertFileSrc } from "@tauri-apps/api/core";
 
     export let photo: Photo;
     export let selected: boolean = false;
@@ -34,7 +35,10 @@
 
     async function loadThumbnail() {
         // Use the store helper which calls the backend
-        src = await getThumbnail(photo.path);
+        const rawPath = await getThumbnail(photo.path);
+        if (rawPath) {
+            src = convertFileSrc(rawPath);
+        }
     }
 
     function formatDuration(seconds: number): string {
@@ -44,12 +48,16 @@
     }
 </script>
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
     class="thumbnail-container"
     class:selected
     on:click
     on:dblclick
     bind:this={imgElement}
+    role="button"
+    tabindex="0"
 >
     {#if visible && src}
         <img {src} alt={photo.filename} loading="lazy" class="thumb-img" />
@@ -61,7 +69,7 @@
         <div class="top-row">
             {#if photo.isFavorite}
                 <div class="icon-indicator favorite">
-                    {@html icons.heart_filled}
+                    {@html icons.heartFilled}
                 </div>
             {/if}
             {#if selected}
@@ -77,7 +85,15 @@
         <div class="bottom-row">
             {#if photo.mediaType === "video"}
                 <div class="video-badge">
-                    <span class="play-icon">{@html icons.play}</span>
+                    <span class="play-icon"
+                        ><svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="white"><path d="M8 5v14l11-7z" /></svg
+                        ></span
+                    >
                     <!-- generic duration if not available -->
                     <span>Video</span>
                 </div>
@@ -116,11 +132,11 @@
         object-fit: cover;
         display: block;
         transition: transform 0.2s ease;
-    }-
+    }
 
     .placeholder {
         width: 100%;
-        height: 100%;-
+        height: 100%;
         background-color: var(--bg-secondary);
     }
 

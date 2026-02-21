@@ -3,6 +3,7 @@
     import {
         activeSection,
         folders,
+        visibleFolders,
         filters,
         selectLibrary,
         photoCount,
@@ -77,7 +78,7 @@
             selectedYear: null,
             selectedMonth: null,
         }));
-        photos.set([]); // Clear current
+        photos.set([]);
         await loadAlbumPhotos(album.id);
     }
 
@@ -91,11 +92,10 @@
             selectedYear: null,
             selectedMonth: null,
         }));
-        photos.set([]); // Clear current
+        photos.set([]);
         await loadTagPhotos(tag.name);
     }
 
-    // Compute video count
     $: videoCount = $photos.filter((p) => p.mediaType === "video").length;
 
     function getSectionCount(id: SidebarSection): string {
@@ -114,11 +114,11 @@
     }
 </script>
 
-<aside class="sidebar glass-thick">
+<aside class="sidebar">
     <div class="sidebar-inner">
         <!-- Smart Collections -->
         <div class="sidebar-section">
-            <h3 class="section-title">Smart Collections</h3>
+            <h3 class="section-title">Library</h3>
             <nav class="nav-list">
                 {#each sections as section}
                     <button
@@ -144,11 +144,11 @@
             <div class="section-header">
                 <h3 class="section-title">Sources</h3>
                 <button
-                    class="settings-icon-btn"
+                    class="section-action-btn"
                     on:click={() => showSettings.set(true)}
-                    title="Manage Settings"
+                    title="Manage Sources"
                 >
-                    ⚙️
+                    {@html icons.settings}
                 </button>
             </div>
             {#if $sourceDirectories.length > 0}
@@ -160,19 +160,24 @@
                                 $activeSource === source.name}
                             on:click={() => selectSource(source.name)}
                         >
-                            <span class="nav-icon">📁</span>
-                            <span class="nav-label">{source.name}</span>
-                            <span class="nav-count"
-                                >{source.photoCount || ""}</span
+                            <span class="nav-icon source-icon"
+                                >{@html icons.folder}</span
                             >
+                            <span class="nav-label truncate">{source.name}</span
+                            >
+                            {#if source.photoCount}
+                                <span class="nav-count"
+                                    >{source.photoCount}</span
+                                >
+                            {/if}
                         </button>
                     {/each}
                 </nav>
             {:else}
-                <div class="empty-state">
-                    <p>No folders added.</p>
+                <div class="empty-hint">
+                    <p>No folders added yet</p>
                     <button
-                        class="add-btn-small"
+                        class="add-btn-inline"
                         on:click={() => showSettings.set(true)}
                         >+ Add Folder</button
                     >
@@ -195,7 +200,7 @@
 
                 {#if expandedFolders}
                     <nav class="nav-list folder-list">
-                        {#each $folders as folder}
+                        {#each $visibleFolders as folder}
                             <button
                                 class="nav-item folder-item"
                                 class:active={$filters.selectedFolder ===
@@ -203,7 +208,7 @@
                                 on:click={() => selectFolder(folder)}
                                 title={folder}
                             >
-                                <span class="nav-icon"
+                                <span class="nav-icon source-icon"
                                     >{@html icons.folder}</span
                                 >
                                 <span class="nav-label truncate"
@@ -211,6 +216,17 @@
                                 >
                             </button>
                         {/each}
+                        {#if $folders.length > $visibleFolders.length}
+                            <button
+                                class="nav-item manage-link"
+                                on:click={() => showSettings.set(true)}
+                            >
+                                <span class="nav-label"
+                                    >+{$folders.length - $visibleFolders.length}
+                                    more — Manage…</span
+                                >
+                            </button>
+                        {/if}
                     </nav>
                 {/if}
             </div>
@@ -237,13 +253,15 @@
                                 $activeResourceId === album.id}
                             on:click={() => selectAlbum(album)}
                         >
-                            <span class="nav-icon">📁</span>
+                            <span class="nav-icon source-icon"
+                                >{@html icons.album}</span
+                            >
                             <span class="nav-label truncate">{album.name}</span>
                             <span class="nav-count">{album.photoCount}</span>
                         </button>
                     {/each}
                     {#if $albums.length === 0}
-                        <div class="empty-hint">No albums</div>
+                        <div class="empty-hint">No albums yet</div>
                     {/if}
                 </nav>
             {/if}
@@ -270,14 +288,15 @@
                                 $activeResourceId === tag.id}
                             on:click={() => selectTag(tag)}
                         >
-                            <span class="nav-icon" style="color: {tag.color}"
-                                >●</span
-                            >
+                            <span
+                                class="tag-dot"
+                                style="background: {tag.color}"
+                            ></span>
                             <span class="nav-label truncate">{tag.name}</span>
                         </button>
                     {/each}
                     {#if $tags.length === 0}
-                        <div class="empty-hint">No tags</div>
+                        <div class="empty-hint">No tags yet</div>
                     {/if}
                 </nav>
             {/if}
@@ -288,7 +307,7 @@
     <div class="sidebar-footer">
         <button class="add-library-btn" on:click={selectLibrary}>
             <span class="add-icon">{@html icons.plus}</span>
-            <span>Add Library</span>
+            <span>Import Folder</span>
         </button>
     </div>
 </aside>
@@ -300,7 +319,9 @@
         display: flex;
         flex-direction: column;
         border-right: 1px solid var(--glass-border);
-        border-radius: 0;
+        background: var(--glass-thin);
+        backdrop-filter: blur(20px) saturate(1.6);
+        -webkit-backdrop-filter: blur(20px) saturate(1.6);
         flex-shrink: 0;
         overflow: hidden;
         animation: slideInLeft var(--duration-base) var(--ease-out);
@@ -311,21 +332,54 @@
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: var(--sp-3) var(--sp-3);
+        padding: var(--sp-3);
     }
 
     .sidebar-section {
-        margin-bottom: var(--sp-6);
+        margin-bottom: var(--sp-5);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-right: var(--sp-1);
     }
 
     .section-title {
-        font-size: var(--text-xs);
+        font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         padding: var(--sp-1) var(--sp-2);
-        margin-bottom: var(--sp-1);
+        margin-bottom: 2px;
+    }
+
+    .section-action-btn {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-sm);
+        color: var(--text-quaternary);
+        transition: var(--transition-fast);
+        opacity: 0;
+    }
+
+    .section-action-btn :global(svg) {
+        width: 14px;
+        height: 14px;
+    }
+
+    .sidebar-section:hover .section-action-btn {
+        opacity: 1;
+    }
+
+    .section-action-btn:hover {
+        color: var(--text-secondary);
+        background: var(--accent-subtle);
     }
 
     .section-title-btn {
@@ -334,7 +388,7 @@
         align-items: center;
         justify-content: space-between;
         padding: var(--sp-1) var(--sp-2);
-        margin-bottom: var(--sp-1);
+        margin-bottom: 2px;
         border-radius: var(--radius-sm);
         transition: var(--transition-fast);
     }
@@ -345,8 +399,13 @@
 
     .chevron {
         display: flex;
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         transition: transform var(--duration-fast) var(--ease-out);
+    }
+
+    .chevron :global(svg) {
+        width: 12px;
+        height: 12px;
     }
 
     .chevron.expanded {
@@ -366,14 +425,14 @@
     .nav-item {
         display: flex;
         align-items: center;
-        gap: var(--sp-3);
-        padding: var(--sp-2) var(--sp-3);
+        gap: var(--sp-2);
+        padding: 6px var(--sp-3);
         border-radius: var(--radius-md);
         color: var(--text-primary);
         font-size: var(--text-sm);
         font-weight: 450;
         transition: var(--transition-fast);
-        min-height: 34px;
+        min-height: 32px;
     }
 
     .nav-item:hover {
@@ -396,8 +455,29 @@
     .nav-icon {
         display: flex;
         flex-shrink: 0;
-        color: var(--text-secondary);
+        color: var(--text-tertiary);
         transition: color var(--duration-fast) var(--ease-out);
+    }
+
+    .nav-icon :global(svg) {
+        width: 17px;
+        height: 17px;
+    }
+
+    .source-icon {
+        color: var(--accent-text);
+    }
+
+    .nav-item.active .source-icon {
+        color: var(--text-on-accent);
+    }
+
+    .tag-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-left: var(--sp-1);
     }
 
     .nav-label {
@@ -406,8 +486,8 @@
     }
 
     .nav-count {
-        font-size: var(--text-xs);
-        color: var(--text-tertiary);
+        font-size: 11px;
+        color: var(--text-quaternary);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }
@@ -418,29 +498,39 @@
         padding-right: var(--sp-1);
     }
 
-    .folder-item .nav-icon {
-        color: var(--accent);
+    .manage-link {
+        font-size: var(--text-xs);
+        color: var(--accent-text);
+        font-weight: 500;
     }
 
-    .folder-item.active .nav-icon {
-        color: var(--text-on-accent);
-    }
-
-    .source-item .nav-count {
-        background: var(--bg-tertiary);
-        padding: 0 6px;
-        border-radius: 99px;
-        font-size: 11px;
-        height: 18px;
-        display: flex;
-        align-items: center;
+    .manage-link:hover {
+        background: var(--accent-subtle);
     }
 
     .empty-hint {
-        padding: 4px 12px;
-        font-size: 12px;
+        padding: var(--sp-2) var(--sp-3);
+        font-size: var(--text-xs);
         color: var(--text-quaternary);
-        font-style: italic;
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+    }
+
+    .add-btn-inline {
+        font-size: var(--text-xs);
+        color: var(--accent-text);
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: var(--radius-sm);
+        background: var(--accent-subtle);
+        transition: var(--transition-fast);
+        width: fit-content;
+    }
+
+    .add-btn-inline:hover {
+        background: var(--accent);
+        color: var(--text-on-accent);
     }
 
     .sidebar-footer {
@@ -454,23 +544,29 @@
         align-items: center;
         justify-content: center;
         gap: var(--sp-2);
-        padding: var(--sp-2) var(--sp-3);
+        padding: 7px var(--sp-3);
         border-radius: var(--radius-md);
         font-size: var(--text-sm);
         font-weight: 500;
-        color: var(--accent);
-        border: 1px dashed var(--accent);
-        background: var(--accent-subtle);
+        color: var(--accent-text);
+        border: 1px dashed var(--glass-border-strong);
+        background: transparent;
         transition: var(--transition-fast);
     }
 
     .add-library-btn:hover {
         background: var(--accent);
         color: var(--text-on-accent);
+        border-color: var(--accent);
         border-style: solid;
     }
 
     .add-icon {
         display: flex;
+    }
+
+    .add-icon :global(svg) {
+        width: 15px;
+        height: 15px;
     }
 </style>

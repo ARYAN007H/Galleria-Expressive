@@ -1,27 +1,45 @@
-:root {
-    /* -- Colors -- */
-    --bg-app: #09090b;
-    --bg-primary: #121216;
-    --bg-secondary: #1a1a24;
-    --bg-tertiary: #27273a;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700;800&display=swap');
 
-    --text-primary: #ffffff;
+:root {
+    /* ── Colors ── */
+    --bg-app: #09090b;
+    --bg-primary: #111114;
+    --bg-secondary: #18181c;
+    --bg-tertiary: #232329;
+    --bg-elevated: #2a2a32;
+
+    --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
     --text-tertiary: #71717a;
     --text-quaternary: #52525b;
+    --text-on-accent: #ffffff;
 
+    /* ── Accent ── */
     --accent: #3b82f6;
     --accent-hover: #2563eb;
-    --accent-subtle: rgba(59, 130, 246, 0.15);
+    --accent-subtle: rgba(59, 130, 246, 0.12);
     --accent-text: #60a5fa;
+    --accent-glow: rgba(59, 130, 246, 0.25);
 
-    /* -- Glassmorphism -- */
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-border-strong: rgba(255, 255, 255, 0.15);
-    --glass-thick: rgba(18, 18, 22, 0.75);
-    --glass-ultra: rgba(18, 18, 22, 0.90);
+    /* ── Semantic Colors ── */
+    --color-danger: #ef4444;
+    --color-danger-subtle: rgba(239, 68, 68, 0.12);
+    --red-500: #ef4444;
+    --error: #ef4444;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
 
-    /* -- Spacing -- */
+    /* ── Glassmorphism ── */
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-border-strong: rgba(255, 255, 255, 0.12);
+    --glass-border-luminance: rgba(255, 255, 255, 0.18);
+    --glass-thin: rgba(18, 18, 22, 0.55);
+    --glass-thick: rgba(18, 18, 22, 0.72);
+    --glass-ultra: rgba(18, 18, 22, 0.88);
+    --bg-glass: rgba(18, 18, 22, 0.72);
+
+    /* ── Spacing ── */
+    --sp-0: 0px;
     --sp-1: 4px;
     --sp-2: 8px;
     --sp-3: 12px;
@@ -29,88 +47,133 @@
     --sp-5: 20px;
     --sp-6: 24px;
     --sp-8: 32px;
+    --sp-10: 40px;
     --sp-12: 48px;
     --sp-16: 64px;
 
-    /* -- Typography -- */
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-md: 1rem;
-    --text-lg: 1.125rem;
-    --text-xl: 1.25rem;
-    --text-2xl: 1.5rem;
+    /* ── Typography ── */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+    --text-xs: 0.6875rem;    /* 11px */
+    --text-sm: 0.8125rem;    /* 13px */
+    --text-base: 0.875rem;   /* 14px */
+    --text-md: 0.9375rem;    /* 15px */
+    --text-lg: 1.0625rem;    /* 17px */
+    --text-xl: 1.25rem;      /* 20px */
+    --text-2xl: 1.5rem;      /* 24px */
+    --text-3xl: 1.875rem;    /* 30px */
 
-    --letter-tight: -0.025em;
+    --letter-tight: -0.02em;
     --letter-normal: 0em;
+    --letter-wide: 0.04em;
 
-    /* -- Radius -- */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    /* ── Radius ── */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --radius-2xl: 24px;
     --radius-full: 9999px;
 
-    /* -- Shadows -- */
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+    /* ── Shadows ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.4), 0 4px 8px -4px rgba(0, 0, 0, 0.25);
+    --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.5), 0 8px 16px -6px rgba(0, 0, 0, 0.3);
+    --shadow-float: 0 24px 48px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
 
-    /* -- Animation -- */
+    /* ── Animation ── */
+    --duration-instant: 80ms;
     --duration-fast: 150ms;
     --duration-base: 250ms;
     --duration-slow: 400ms;
+    --duration-slower: 600ms;
 
-    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-out: cubic-bezier(0.22, 0.68, 0, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
 
-    /* -- Layout -- */
-    --toolbar-height: 64px;
+    --transition-fast: all var(--duration-fast) var(--ease-out);
+    --transition-base: all var(--duration-base) var(--ease-out);
+    --transition-slow: all var(--duration-slow) var(--ease-out);
+
+    /* ── Layout ── */
+    --toolbar-height: 56px;
+    --sidebar-width: 240px;
+
+    /* ── Misc ── */
+    --border-subtle: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Light Theme ── */
 [data-theme="light"] {
-    --bg-app: #f4f4f5;
+    --bg-app: #f5f5f7;
     --bg-primary: #ffffff;
-    --bg-secondary: #e4e4e7;
-    --bg-tertiary: #d4d4d8;
+    --bg-secondary: #f0f0f2;
+    --bg-tertiary: #e5e5ea;
+    --bg-elevated: #ffffff;
 
-    --text-primary: #18181b;
-    --text-secondary: #52525b;
-    --text-tertiary: #71717a;
-    --text-quaternary: #a1a1aa;
+    --text-primary: #1d1d1f;
+    --text-secondary: #48484a;
+    --text-tertiary: #8e8e93;
+    --text-quaternary: #aeaeb2;
+    --text-on-accent: #ffffff;
 
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-border-strong: rgba(0, 0, 0, 0.15);
-    --glass-thick: rgba(255, 255, 255, 0.75);
-    --glass-ultra: rgba(255, 255, 255, 0.90);
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-border-strong: rgba(0, 0, 0, 0.1);
+    --glass-border-luminance: rgba(255, 255, 255, 0.8);
+    --glass-thin: rgba(255, 255, 255, 0.5);
+    --glass-thick: rgba(255, 255, 255, 0.7);
+    --glass-ultra: rgba(255, 255, 255, 0.88);
+    --bg-glass: rgba(255, 255, 255, 0.7);
 
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    --accent-subtle: rgba(59, 130, 246, 0.08);
+    --accent-glow: rgba(59, 130, 246, 0.2);
+    --color-danger-subtle: rgba(239, 68, 68, 0.08);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+    --shadow-float: 0 24px 48px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.1);
+
+    --border-subtle: rgba(0, 0, 0, 0.06);
 }
 
-/* -- Global Reset -- */
+/* ── Global Reset ── */
 *,
 *::before,
 *::after {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 body,
 html {
-    margin: 0;
-    padding: 0;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
     background-color: var(--bg-app);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+#app {
+    width: 100%;
+    height: 100%;
 }
 
 button {
@@ -119,6 +182,7 @@ button {
     background: none;
     cursor: pointer;
     padding: 0;
+    color: inherit;
 }
 
 input,
@@ -132,10 +196,10 @@ a {
     text-decoration: none;
 }
 
-/* -- Scrollbars -- */
+/* ── Scrollbars — Ultra Thin Apple Style ── */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -143,45 +207,73 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--bg-tertiary);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-full);
-    border: 2px solid var(--bg-app);
+    border: 2px solid transparent;
+    background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
+    background: rgba(255, 255, 255, 0.2);
+    background-clip: content-box;
 }
 
-/* -- Utilities -- */
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+    background-clip: content-box;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+    background-clip: content-box;
+}
+
+/* ── Glass Utility Classes ── */
+.glass-thin {
+    background: var(--glass-thin);
+    backdrop-filter: blur(16px) saturate(1.6);
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+}
+
 .glass-thick {
     background: var(--glass-thick);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(24px) saturate(1.8);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
 }
 
 .glass-ultra {
     background: var(--glass-ultra);
-    backdrop-filter: blur(40px);
-    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px) saturate(2);
+    -webkit-backdrop-filter: blur(40px) saturate(2);
 }
 
-/* -- Animations -- */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
+/* ── Utility Classes ── */
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
-    to {
-        opacity: 1;
-    }
+.no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* ── Keyframe Animations ── */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes fadeInScale {
     from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(0.96);
     }
-
     to {
         opacity: 1;
         transform: scale(1);
@@ -191,9 +283,41 @@ a {
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(8px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
     to {
         opacity: 1;
         transform: translateY(0);
@@ -201,11 +325,20 @@ a {
 }
 
 @keyframes shimmer {
-    0% {
-        background-position: 200% 0;
-    }
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
 
-    100% {
-        background-position: -200% 0;
-    }
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
 }

@@ -5,6 +5,7 @@
         selectedPhoto,
         isIndexing,
         showSettings,
+        showEditor,
         initAutoScan,
         loadTags,
         loadAlbums,
@@ -18,6 +19,7 @@
     import SettingsPanel from "./components/SettingsPanel.svelte";
     import BottomPill from "./components/BottomPill.svelte";
     import BatchActionBar from "./components/BatchActionBar.svelte";
+    import PhotoEditor from "./components/PhotoEditor.svelte";
     import { photos, libraryPath } from "./lib/store";
 
     onMount(() => {
@@ -108,6 +110,10 @@
 
     {#if $showSettings}
         <SettingsPanel />
+    {/if}
+
+    {#if $showEditor && $selectedPhoto}
+        <PhotoEditor onClose={() => showEditor.set(false)} />
     {/if}
 
     <BatchActionBar />

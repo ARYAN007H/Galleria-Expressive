@@ -50,6 +50,7 @@ export type Theme = 'light' | 'dark'
 export type LayoutMode = 'compact' | 'default' | 'expressive'
 export type SortBy = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
 export type SidebarSection = 'all' | 'recents' | 'favorites' | 'videos' | 'source' | 'trash' | 'album' | 'tag'
+export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal' | 'indigo'
 
 export interface AppSettings {
     theme: Theme
@@ -57,6 +58,10 @@ export interface AppSettings {
     filmstripScrollEnabled: boolean
     gridZoom: number // 1-5 scale
     showSidebar: boolean
+    accentColor: AccentColor
+    hiddenFolders: string[]
+    pinnedFolders: string[]
+    maxVisibleFolders: number
 }
 
 // ── Settings Persistence ──
@@ -75,6 +80,10 @@ const defaultSettings: AppSettings = {
     filmstripScrollEnabled: true,
     gridZoom: 3,
     showSidebar: true,
+    accentColor: 'blue',
+    hiddenFolders: [],
+    pinnedFolders: [],
+    maxVisibleFolders: 8,
 }
 
 function saveSettings(s: AppSettings) {
@@ -93,12 +102,38 @@ export const appSettings = writable<AppSettings>(initialSettings)
 function applyTheme(theme: Theme) {
     document.documentElement.setAttribute('data-theme', theme)
 }
+
+// Accent color presets
+const accentPresets: Record<AccentColor, { main: string; hover: string; text: string; subtle: string; glow: string }> = {
+    blue: { main: '#3b82f6', hover: '#2563eb', text: '#60a5fa', subtle: 'rgba(59,130,246,0.12)', glow: 'rgba(59,130,246,0.25)' },
+    purple: { main: '#8b5cf6', hover: '#7c3aed', text: '#a78bfa', subtle: 'rgba(139,92,246,0.12)', glow: 'rgba(139,92,246,0.25)' },
+    pink: { main: '#ec4899', hover: '#db2777', text: '#f472b6', subtle: 'rgba(236,72,153,0.12)', glow: 'rgba(236,72,153,0.25)' },
+    red: { main: '#ef4444', hover: '#dc2626', text: '#f87171', subtle: 'rgba(239,68,68,0.12)', glow: 'rgba(239,68,68,0.25)' },
+    orange: { main: '#f97316', hover: '#ea580c', text: '#fb923c', subtle: 'rgba(249,115,22,0.12)', glow: 'rgba(249,115,22,0.25)' },
+    green: { main: '#22c55e', hover: '#16a34a', text: '#4ade80', subtle: 'rgba(34,197,94,0.12)', glow: 'rgba(34,197,94,0.25)' },
+    teal: { main: '#14b8a6', hover: '#0d9488', text: '#2dd4bf', subtle: 'rgba(20,184,166,0.12)', glow: 'rgba(20,184,166,0.25)' },
+    indigo: { main: '#6366f1', hover: '#4f46e5', text: '#818cf8', subtle: 'rgba(99,102,241,0.12)', glow: 'rgba(99,102,241,0.25)' },
+}
+
+function applyAccent(color: AccentColor) {
+    const p = accentPresets[color]
+    const root = document.documentElement
+    root.style.setProperty('--accent', p.main)
+    root.style.setProperty('--accent-hover', p.hover)
+    root.style.setProperty('--accent-text', p.text)
+    root.style.setProperty('--accent-subtle', p.subtle)
+    root.style.setProperty('--accent-glow', p.glow)
+    root.style.setProperty('--shadow-glow', `0 0 20px ${p.glow}`)
+}
+
 applyTheme(initialSettings.theme)
+applyAccent(initialSettings.accentColor)
 
 // Persist on change
 appSettings.subscribe(s => {
     saveSettings(s)
     applyTheme(s.theme)
+    applyAccent(s.accentColor)
 })
 
 // Theme toggle helper
@@ -135,6 +170,7 @@ export const sortBy = writable<SortBy>('date-desc')
 export const activeSection = writable<SidebarSection>('all')
 export const activeResourceId = writable<number | null>(null) // For album/tag IDs
 export const showSettings = writable<boolean>(false)
+export const showEditor = writable<boolean>(false)
 export const showInfoPanel = writable<boolean>(false)
 export const sourceDirectories = writable<SourceDirectory[]>([])
 export const activeSource = writable<string | null>(null) // null = all sources
@@ -308,6 +344,24 @@ export const folders = derived(photos, ($photos) => {
     return Array.from(foldersSet).sort()
 })
 
+// Filtered folders based on hiddenFolders/pinnedFolders/maxVisibleFolders
+export const visibleFolders = derived(
+    [folders, appSettings],
+    ([$folders, $settings]) => {
+        const hidden = new Set($settings.hiddenFolders)
+        const pinned = new Set($settings.pinnedFolders)
+        const visible = $folders.filter(f => !hidden.has(f))
+        // Sort: pinned first, then alphabetically
+        visible.sort((a, b) => {
+            const aPinned = pinned.has(a) ? 0 : 1
+            const bPinned = pinned.has(b) ? 0 : 1
+            if (aPinned !== bPinned) return aPinned - bPinned
+            return a.localeCompare(b)
+        })
+        return visible.slice(0, $settings.maxVisibleFolders)
+    }
+)
+
 export const months = derived(
     [photos, filters],
     ([$photos, $filters]) => {
@@ -392,16 +446,16 @@ export async function initAutoScan() {
         )
 
         if (result?.sources) {
-      // Also refresh sources
-      const libs = await invoke<any[]>('get_libraries')
-      sourceDirectories.set((libs || []).map(l => ({
-        id: l.id,
-        name: l.root_path?.split('/').pop() || l.path?.split('/').pop() || 'Library',
-        rootPath: l.root_path || l.path,
-        photoCount: 0
-      })))
-      if (libs && libs.length > 0) {
-        libraryPath.set(libs[0].root_path || libs[0].path)
+            // Also refresh sources
+            const libs = await invoke<any[]>('get_libraries')
+            sourceDirectories.set((libs || []).map(l => ({
+                id: l.id,
+                name: l.root_path?.split('/').pop() || l.path?.split('/').pop() || 'Library',
+                rootPath: l.root_path || l.path,
+                photoCount: 0
+            })))
+            if (libs && libs.length > 0) {
+                libraryPath.set(libs[0].root_path || libs[0].path)
             }
         }
 

@@ -20,6 +20,12 @@
             }
         ],
         "security": {
+            "assetProtocol": {
+                "enable": true,
+                "scope": [
+                    "**"
+                ]
+            },
             "capabilities": [
                 "main-capability"
             ]

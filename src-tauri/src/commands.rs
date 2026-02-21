@@ -670,3 +670,20 @@ pub async fn get_album_photos(
     let db = db_guard.as_ref().ok_or("No library loaded")?;
     db.get_album_photos(album_id).map_err(|e| e.to_string())
 }
+
+// ── Photo Editor ──
+
+/// Save an edited photo (base64 JPEG data) to disk
+#[tauri::command]
+pub async fn save_edited_photo(
+    image_data: String,
+    target_path: String,
+) -> Result<String, String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&image_data)
+        .map_err(|e| format!("Base64 decode error: {}", e))?;
+    std::fs::write(&target_path, &bytes)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    Ok(target_path)
+}

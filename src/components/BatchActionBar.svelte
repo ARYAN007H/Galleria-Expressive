@@ -80,30 +80,14 @@
                 {@html icons.heart || "♥"}
             </button>
             <button class="batch-btn" on:click={handleTagMenu} title="Tag">
-                <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    ><path
-                        d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"
-                    /></svg
-                >
+                {@html icons.tag}
             </button>
             <button
                 class="batch-btn"
                 on:click={handleAlbumMenu}
                 title="Add to Album"
             >
-                <svg
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    ><path
-                        d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"
-                    /></svg
-                >
+                {@html icons.folder}
             </button>
             <button
                 class="batch-btn danger"
@@ -150,7 +134,8 @@
                         class="dropdown-item"
                         on:click={() => applyAlbum(album.id)}
                     >
-                        📁 {album.name}
+                        <span class="album-icon">{@html icons.folder}</span>
+                        {album.name}
                         <span class="album-count">({album.photoCount})</span>
                     </button>
                 {/each}
@@ -162,7 +147,7 @@
                     <input
                         type="text"
                         bind:value={newAlbumName}
-                        placeholder="New album name..."
+                        placeholder="New album name…"
                         class="new-album-input"
                     />
                     <button type="submit" class="new-album-btn">+</button>
@@ -180,32 +165,20 @@
         transform: translateX(-50%);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--sp-3);
         padding: 10px 20px;
-        background: var(--bg-glass);
-        backdrop-filter: blur(24px) saturate(1.6);
-        -webkit-backdrop-filter: blur(24px) saturate(1.6);
-        border-radius: 20px;
-        box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.18),
-            0 0 0 1px var(--border-subtle);
+        background: var(--glass-thick);
+        backdrop-filter: blur(30px) saturate(1.8);
+        -webkit-backdrop-filter: blur(30px) saturate(1.8);
+        border: 1px solid var(--glass-border-strong);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-float);
         z-index: 1000;
-        animation: slideUp 0.25s var(--ease-out);
-    }
-
-    @keyframes slideUp {
-        from {
-            transform: translateX(-50%) translateY(60px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
+        animation: slideInUp var(--duration-base) var(--ease-spring);
     }
 
     .batch-info {
-        font-size: 13px;
+        font-size: var(--text-sm);
         font-weight: 600;
         color: var(--text-primary);
         white-space: nowrap;
@@ -227,15 +200,18 @@
         align-items: center;
         justify-content: center;
         padding: 6px 10px;
-        border: none;
         background: var(--bg-secondary);
         color: var(--text-primary);
-        border-radius: 10px;
-        font-size: 12px;
+        border-radius: var(--radius-md);
+        font-size: var(--text-xs);
         font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s ease;
+        transition: var(--transition-fast);
         gap: 4px;
+    }
+
+    .batch-btn :global(svg) {
+        width: 14px;
+        height: 14px;
     }
 
     .batch-btn:hover {
@@ -243,14 +219,14 @@
     }
 
     .batch-btn.danger:hover {
-        background: rgba(255, 59, 48, 0.15);
-        color: #ff3b30;
+        background: var(--color-danger-subtle);
+        color: var(--color-danger);
     }
 
     .batch-divider {
         width: 1px;
         height: 20px;
-        background: var(--border-subtle);
+        background: var(--glass-border-strong);
         margin: 0 4px;
     }
 
@@ -262,25 +238,15 @@
         min-width: 200px;
         max-height: 240px;
         overflow-y: auto;
-        background: var(--bg-glass);
-        backdrop-filter: blur(20px);
-        border-radius: 12px;
-        box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.25),
-            0 0 0 1px var(--border-subtle);
-        padding: 8px;
-        animation: fadeIn 0.15s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(8px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
+        background: var(--glass-ultra);
+        backdrop-filter: blur(40px) saturate(2);
+        -webkit-backdrop-filter: blur(40px) saturate(2);
+        border: 1px solid var(--glass-border-strong);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-float);
+        padding: var(--sp-2);
+        animation: fadeInScale var(--duration-fast) var(--ease-spring);
+        transform-origin: bottom center;
     }
 
     .dropdown-title {
@@ -288,7 +254,7 @@
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         padding: 4px 8px 8px;
     }
 
@@ -297,18 +263,26 @@
         align-items: center;
         gap: 8px;
         width: 100%;
-        padding: 8px;
-        border: none;
-        background: none;
+        padding: 7px 8px;
         color: var(--text-primary);
-        font-size: 13px;
-        border-radius: 8px;
-        cursor: pointer;
+        font-size: var(--text-sm);
+        border-radius: var(--radius-sm);
         text-align: left;
+        transition: var(--transition-fast);
     }
 
     .dropdown-item:hover {
-        background: var(--bg-secondary);
+        background: var(--accent-subtle);
+    }
+
+    .album-icon {
+        display: flex;
+        color: var(--accent-text);
+    }
+
+    .album-icon :global(svg) {
+        width: 14px;
+        height: 14px;
     }
 
     .tag-dot {
@@ -319,21 +293,21 @@
     }
 
     .album-count {
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         font-size: 11px;
         margin-left: auto;
     }
 
     .dropdown-divider {
         height: 1px;
-        background: var(--border-subtle);
+        background: var(--glass-border);
         margin: 4px 0;
     }
 
     .dropdown-empty {
         padding: 12px 8px;
-        color: var(--text-tertiary);
-        font-size: 12px;
+        color: var(--text-quaternary);
+        font-size: var(--text-xs);
         text-align: center;
     }
 
@@ -346,12 +320,13 @@
     .new-album-input {
         flex: 1;
         padding: 6px 8px;
-        border: 1px solid var(--border-subtle);
-        border-radius: 8px;
+        border: 1px solid var(--glass-border-strong);
+        border-radius: var(--radius-sm);
         background: var(--bg-secondary);
         color: var(--text-primary);
-        font-size: 12px;
+        font-size: var(--text-xs);
         outline: none;
+        transition: border-color var(--duration-fast) var(--ease-out);
     }
 
     .new-album-input:focus {
@@ -360,12 +335,15 @@
 
     .new-album-btn {
         padding: 6px 10px;
-        border: none;
         background: var(--accent);
         color: white;
-        border-radius: 8px;
-        font-size: 14px;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
         font-weight: 600;
-        cursor: pointer;
+        transition: var(--transition-fast);
+    }
+
+    .new-album-btn:hover {
+        background: var(--accent-hover);
     }
 </style>

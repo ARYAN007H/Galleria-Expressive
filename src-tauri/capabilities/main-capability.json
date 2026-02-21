@@ -9,6 +9,7 @@
     "dialog:default",
     "fs:default",
     "fs:allow-read",
+    "fs:read-all",
     "shell:allow-open",
     "select-and-index",
     "get-categories",

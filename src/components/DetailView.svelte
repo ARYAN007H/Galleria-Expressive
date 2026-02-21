@@ -19,19 +19,47 @@
     } from "../lib/store";
     import type { Photo, Tag, Album } from "../lib/store";
     import { convertFileSrc } from "@tauri-apps/api/core";
+    import { showEditor } from "../lib/store";
 
     let imageSrc = "";
-
     let imageLoading = true;
     let filmstripEl: HTMLDivElement;
     let thumbnailCache = new Map<string, string>();
+    let shareToast = false;
 
-    // Current photo index in filtered list
+    // Swipe gesture tracking
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let swiping = false;
+    const SWIPE_THRESHOLD = 50;
+
+    function handleTouchStart(e: TouchEvent) {
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            swiping = true;
+        }
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+        if (!swiping || e.changedTouches.length !== 1) return;
+        swiping = false;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        // Only horizontal swipes (not vertical scrolls)
+        if (
+            Math.abs(dx) > SWIPE_THRESHOLD &&
+            Math.abs(dx) > Math.abs(dy) * 1.5
+        ) {
+            if (dx > 0) navigate("prev");
+            else navigate("next");
+        }
+    }
+
     $: currentIndex = $selectedPhoto
         ? $filteredPhotos.findIndex((p) => p.id === $selectedPhoto!.id)
         : -1;
 
-    // Filmstrip: show ~6-7 neighbors centered on current
     $: filmstripPhotos = getFilmstripPhotos(currentIndex, $filteredPhotos);
 
     function getFilmstripPhotos(
@@ -39,14 +67,13 @@
         photos: Photo[],
     ): { photo: Photo; idx: number }[] {
         if (index < 0 || photos.length === 0) return [];
-        const halfWindow = 3;
+        const halfWindow = 4;
         let start = Math.max(0, index - halfWindow);
         let end = Math.min(photos.length, index + halfWindow + 1);
 
-        // Ensure we show roughly 7 items
-        if (end - start < 7) {
-            if (start === 0) end = Math.min(photos.length, 7);
-            else start = Math.max(0, end - 7);
+        if (end - start < 9) {
+            if (start === 0) end = Math.min(photos.length, 9);
+            else start = Math.max(0, end - 9);
         }
 
         return photos.slice(start, end).map((photo, i) => ({
@@ -55,7 +82,6 @@
         }));
     }
 
-    // Load the main image
     async function loadMainImage(photo: Photo) {
         imageLoading = true;
         try {
@@ -69,7 +95,6 @@
         imageLoading = false;
     }
 
-    // Thumbnail helper for filmstrip
     async function loadFilmstripThumb(photo: Photo): Promise<string> {
         if (thumbnailCache.has(photo.path))
             return thumbnailCache.get(photo.path)!;
@@ -84,7 +109,6 @@
         return "";
     }
 
-    // Navigation
     function navigate(direction: "prev" | "next") {
         if (currentIndex < 0) return;
         const newIndex =
@@ -108,7 +132,6 @@
         showInfoPanel.set(false);
     }
 
-    // Keyboard navigation
     function handleKeydown(e: KeyboardEvent) {
         switch (e.key) {
             case "ArrowLeft":
@@ -129,16 +152,12 @@
         }
     }
 
-    // Filmstrip scroll with mouse wheel
     function handleFilmstripWheel(e: WheelEvent) {
         if (!$appSettings.filmstripScrollEnabled || !filmstripEl) return;
         e.preventDefault();
-
-        // Scroll horizontally on wheel
         filmstripEl.scrollLeft += e.deltaY * 0.5;
     }
 
-    // Scroll filmstrip to center current
     function scrollFilmstripToCenter() {
         if (!filmstripEl) return;
         const activeThumb = filmstripEl.querySelector(
@@ -153,15 +172,12 @@
         }
     }
 
-    // Reactive image loading
     $: if ($selectedPhoto) {
         loadMainImage($selectedPhoto);
         loadCurrentTags();
-        // Delay scroll to let DOM update
         setTimeout(scrollFilmstripToCenter, 50);
     }
 
-    // Format file size
     function formatSize(bytes: number): string {
         if (bytes < 1024) return `${bytes} B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -184,7 +200,6 @@
         }
     }
 
-    // Favorite
     let favoriteAnimating = false;
     async function handleFavorite() {
         if (!$selectedPhoto) return;
@@ -193,7 +208,6 @@
         setTimeout(() => (favoriteAnimating = false), 300);
     }
 
-    // Delete
     async function handleDelete() {
         if (!$selectedPhoto) return;
         const id = $selectedPhoto.id;
@@ -201,7 +215,22 @@
         await deletePhotos([id]);
     }
 
-    // Tags
+    async function handleShare() {
+        if (!$selectedPhoto) return;
+        try {
+            await navigator.clipboard.writeText($selectedPhoto.path);
+            shareToast = true;
+            setTimeout(() => (shareToast = false), 2000);
+        } catch (err) {
+            console.error("Failed to copy:", err);
+        }
+    }
+
+    async function handleEdit() {
+        if (!$selectedPhoto) return;
+        showEditor.set(true);
+    }
+
     let currentTags: Tag[] = [];
 
     async function loadCurrentTags() {
@@ -214,7 +243,6 @@
         const name = prompt("Enter tag name:");
         if (!name) return;
 
-        // Find or create
         let tag = $tags.find(
             (t) => t.name.toLowerCase() === name.toLowerCase(),
         );
@@ -235,10 +263,8 @@
         await loadCurrentTags();
     }
 
-    // Albums
     async function handleAddToAlbum() {
         if (!$selectedPhoto) return;
-        // Simple prompt for now
         const name = prompt("Enter album name to add to (or create new):");
         if (!name) return;
 
@@ -253,14 +279,17 @@
 
         if (album) {
             await addToAlbum(album.id, [$selectedPhoto.id]);
-            alert(`Added to album "${album.name}"`);
         }
     }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="lightbox">
+<div
+    class="lightbox"
+    on:touchstart={handleTouchStart}
+    on:touchend={handleTouchEnd}
+>
     <!-- Background blur -->
     <div class="lightbox-bg">
         {#if imageSrc}
@@ -269,7 +298,7 @@
     </div>
 
     <!-- Top toolbar -->
-    <header class="lightbox-toolbar glass-thin">
+    <header class="lightbox-toolbar">
         <div class="toolbar-left">
             <button class="lb-btn" on:click={closeDetail} title="Back">
                 {@html icons.arrowLeft}
@@ -294,18 +323,19 @@
                         height="18"
                         viewBox="0 0 24 24"
                         fill="currentColor"
-                        ><path
-                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                        /></svg
                     >
+                        <path
+                            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                        />
+                    </svg>
                 {:else}
                     {@html icons.heart}
                 {/if}
             </button>
-            <button class="lb-btn" title="Share">
+            <button class="lb-btn" on:click={handleShare} title="Share">
                 {@html icons.share}
             </button>
-            <button class="lb-btn" title="Edit">
+            <button class="lb-btn" on:click={handleEdit} title="Edit">
                 {@html icons.edit}
             </button>
             <button
@@ -325,6 +355,10 @@
             </button>
         </div>
     </header>
+
+    {#if shareToast}
+        <div class="share-toast">Path copied to clipboard!</div>
+    {/if}
 
     <!-- Main image area -->
     <div class="lightbox-content">
@@ -376,7 +410,7 @@
 
         <!-- Info panel -->
         {#if $showInfoPanel && $selectedPhoto}
-            <aside class="info-panel glass-thick">
+            <aside class="info-panel">
                 <div class="info-content">
                     <h3 class="info-title">Details</h3>
 
@@ -407,7 +441,8 @@
                     <div class="info-section">
                         <h4 class="info-section-title">Actions</h4>
                         <button class="action-btn" on:click={handleAddToAlbum}>
-                            <span class="icon">📁</span> Add to Album
+                            <span class="action-icon">{@html icons.folder}</span
+                            > Add to Album
                         </button>
                     </div>
 
@@ -577,7 +612,7 @@
     </div>
 
     <!-- Filmstrip -->
-    <div class="filmstrip-container glass-thin">
+    <div class="filmstrip-container">
         <div
             class="filmstrip no-scrollbar"
             bind:this={filmstripEl}
@@ -612,7 +647,7 @@
         display: flex;
         flex-direction: column;
         animation: fadeIn var(--duration-fast) var(--ease-out);
-        background: rgba(0, 0, 0, 0.92);
+        background: rgba(0, 0, 0, 0.94);
     }
 
     .lightbox-bg {
@@ -626,8 +661,8 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(60px) brightness(0.3) saturate(1.3);
-        transform: scale(1.2);
+        filter: blur(80px) brightness(0.25) saturate(1.4);
+        transform: scale(1.3);
         opacity: 0.5;
     }
 
@@ -641,8 +676,7 @@
         padding: var(--sp-2) var(--sp-4);
         height: var(--toolbar-height);
         flex-shrink: 0;
-        border-radius: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .toolbar-left,
@@ -654,20 +688,25 @@
 
     .photo-position {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.6);
+        color: rgba(255, 255, 255, 0.5);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }
 
     .lb-btn {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: var(--radius-md);
-        color: rgba(255, 255, 255, 0.75);
+        color: rgba(255, 255, 255, 0.65);
         transition: var(--transition-fast);
+    }
+
+    .lb-btn :global(svg) {
+        width: 18px;
+        height: 18px;
     }
 
     .lb-btn:hover {
@@ -677,12 +716,12 @@
 
     .lb-btn.active {
         color: var(--accent);
-        background: rgba(0, 113, 227, 0.15);
+        background: rgba(59, 130, 246, 0.15);
     }
 
     .lb-btn.danger:hover {
         color: var(--color-danger);
-        background: rgba(255, 59, 48, 0.15);
+        background: rgba(239, 68, 68, 0.15);
     }
 
     .lb-btn.favorite-active {
@@ -746,18 +785,12 @@
     }
 
     .loading-spinner {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        border-top-color: white;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        border-top-color: rgba(255, 255, 255, 0.6);
         animation: spin 0.7s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
     }
 
     /* Nav arrows */
@@ -766,17 +799,23 @@
         top: 50%;
         transform: translateY(-50%);
         z-index: 20;
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         border-radius: var(--radius-full);
-        color: rgba(255, 255, 255, 0.8);
+        color: rgba(255, 255, 255, 0.7);
         transition: var(--transition-fast);
         opacity: 0;
+    }
+
+    .nav-arrow :global(svg) {
+        width: 18px;
+        height: 18px;
     }
 
     .lightbox:hover .nav-arrow {
@@ -801,8 +840,10 @@
     .info-panel {
         width: 280px;
         flex-shrink: 0;
-        border-radius: 0;
-        border-left: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(30px) saturate(1.5);
+        -webkit-backdrop-filter: blur(30px) saturate(1.5);
+        border-left: 1px solid rgba(255, 255, 255, 0.05);
         overflow-y: auto;
         animation: slideInRight var(--duration-base) var(--ease-out);
     }
@@ -821,7 +862,7 @@
     .info-section {
         margin-bottom: var(--sp-5);
         padding-bottom: var(--sp-4);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .info-section:last-child {
@@ -829,11 +870,11 @@
     }
 
     .info-section-title {
-        font-size: var(--text-xs);
+        font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.4);
+        color: rgba(255, 255, 255, 0.35);
         margin-bottom: var(--sp-3);
     }
 
@@ -842,12 +883,12 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: var(--sp-3);
-        padding: var(--sp-1) 0;
+        padding: 3px 0;
     }
 
     .info-label {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.45);
+        color: rgba(255, 255, 255, 0.4);
         flex-shrink: 0;
     }
 
@@ -855,7 +896,7 @@
         font-size: var(--text-sm);
         color: rgba(255, 255, 255, 0.85);
         text-align: right;
-        max-width: 180px;
+        max-width: 170px;
     }
 
     /* Filmstrip */
@@ -864,8 +905,7 @@
         z-index: 10;
         flex-shrink: 0;
         padding: var(--sp-3) var(--sp-4);
-        border-radius: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -874,7 +914,7 @@
     .filmstrip {
         display: flex;
         align-items: center;
-        gap: var(--sp-2);
+        gap: 6px;
         overflow-x: auto;
         max-width: 100%;
         padding: 0 var(--sp-2);
@@ -882,96 +922,25 @@
 
     .filmstrip-item {
         flex-shrink: 0;
-        width: 64px;
-        height: 64px;
+        width: 56px;
+        height: 56px;
         border-radius: var(--radius-md);
         overflow: hidden;
         cursor: pointer;
         border: 2px solid transparent;
         transition: var(--transition-fast);
-        opacity: 0.5;
+        opacity: 0.45;
     }
 
     .filmstrip-item:hover {
-        border-color: var(--glass-border);
+        opacity: 0.75;
+        border-color: rgba(255, 255, 255, 0.15);
     }
 
     .filmstrip-item.active {
+        opacity: 1;
         border-color: var(--accent);
         box-shadow: 0 0 0 2px var(--accent-subtle);
-    }
-
-    /* Tags */
-    .tags-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .tag-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background: var(--bg-secondary);
-        padding: 2px 8px;
-        border-radius: 99px;
-        font-size: 11px;
-        color: var(--text-secondary);
-        border: 1px solid var(--glass-border);
-    }
-
-    .tag-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--tag-color, var(--accent));
-    }
-
-    .tag-remove {
-        margin-left: 2px;
-        cursor: pointer;
-        opacity: 0.5;
-        font-size: 14px;
-        line-height: 1;
-    }
-
-    .tag-remove:hover {
-        opacity: 1;
-        color: var(--error);
-    }
-
-    .add-tag-btn {
-        font-size: 11px;
-        color: var(--text-tertiary);
-        padding: 2px 8px;
-        border: 1px dashed var(--glass-border);
-        border-radius: 99px;
-        transition: all 0.2s;
-    }
-
-    .add-tag-btn:hover {
-        color: var(--accent);
-        border-color: var(--accent);
-        background: var(--accent-subtle);
-    }
-
-    .action-btn {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-sm);
-        font-size: 12px;
-        color: var(--text-secondary);
-        transition: all 0.2s;
-    }
-
-    .action-btn:hover {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
     }
 
     .filmstrip-item img {
@@ -985,38 +954,138 @@
     .filmstrip-placeholder {
         width: 100%;
         height: 100%;
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Tags */
+    .tags-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .tag-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--tag-color, var(--accent));
+    }
+
+    .tag-remove {
+        margin-left: 2px;
+        opacity: 0.4;
+        font-size: 13px;
+        line-height: 1;
+        color: rgba(255, 255, 255, 0.7);
+        transition: opacity var(--duration-fast) var(--ease-out);
+    }
+
+    .tag-remove:hover {
+        opacity: 1;
+        color: var(--color-danger);
+    }
+
+    .add-tag-btn {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.4);
+        padding: 2px 8px;
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        border-radius: var(--radius-full);
+        transition: var(--transition-fast);
+    }
+
+    .add-tag-btn:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    .action-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: var(--radius-sm);
+        font-size: var(--text-xs);
+        color: rgba(255, 255, 255, 0.65);
+        transition: var(--transition-fast);
+    }
+
+    .action-icon {
+        display: flex;
+        color: var(--accent-text);
+    }
+
+    .action-icon :global(svg) {
+        width: 14px;
+        height: 14px;
+    }
+
+    .action-btn:hover {
         background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.9);
     }
 
     /* EXIF chip grid */
     .exif-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: var(--sp-2);
+        gap: 6px;
     }
 
     .exif-chip {
         display: flex;
         flex-direction: column;
         gap: 2px;
-        padding: var(--sp-2) var(--sp-3);
+        padding: 7px var(--sp-3);
         border-radius: var(--radius-md);
         background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .exif-chip-label {
         font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.35);
+        color: rgba(255, 255, 255, 0.3);
         font-weight: 600;
     }
 
     .exif-chip-value {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.9);
+        color: rgba(255, 255, 255, 0.88);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
+    }
+
+    /* Share toast */
+    .share-toast {
+        position: absolute;
+        top: calc(var(--toolbar-height) + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        padding: 8px 16px;
+        background: rgba(34, 197, 94, 0.9);
+        color: white;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        border-radius: var(--radius-md);
+        animation: slideInUp var(--duration-fast) var(--ease-spring);
     }
 </style>

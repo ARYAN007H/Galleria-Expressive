@@ -21,7 +21,7 @@
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             searchQuery.set(value);
-        }, 200);
+        }, 180);
     }
 
     function clearSearch() {
@@ -54,15 +54,13 @@
     }
 
     function handleClickOutside() {
-        if (showSortMenu) {
-            showSortMenu = false;
-        }
+        if (showSortMenu) showSortMenu = false;
     }
 </script>
 
 <svelte:window on:click={handleClickOutside} />
 
-<header class="toolbar glass-thick">
+<header class="toolbar">
     <div class="toolbar-left">
         <button
             class="toolbar-btn"
@@ -88,7 +86,7 @@
                 bind:this={searchInput}
                 class="search-input"
                 type="text"
-                placeholder="Search Photos, People, Places"
+                placeholder="Search photos, people, places…"
                 value={query}
                 on:input={handleInput}
             />
@@ -131,7 +129,7 @@
                 {@html icons.sort}
             </button>
             {#if showSortMenu}
-                <div class="sort-menu glass-ultra">
+                <div class="sort-menu">
                     {#each sortOptions as opt}
                         <button
                             class="sort-option"
@@ -181,12 +179,15 @@
         border-bottom: 1px solid var(--glass-border);
         flex-shrink: 0;
         z-index: 100;
-        border-radius: 0;
         background: var(--glass-thick);
-        backdrop-filter: blur(30px);
-        -webkit-backdrop-filter: blur(30px);
+        backdrop-filter: blur(30px) saturate(1.8);
+        -webkit-backdrop-filter: blur(30px) saturate(1.8);
         user-select: none;
         -webkit-app-region: drag;
+        /* Subtle inner light for liquid glass */
+        box-shadow:
+            inset 0 -1px 0 var(--glass-border),
+            inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
     .toolbar-left {
@@ -199,16 +200,17 @@
 
     .photo-count {
         font-size: var(--text-sm);
-        color: var(--text-secondary);
+        color: var(--text-tertiary);
         font-weight: 500;
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
     }
 
     .toolbar-center {
         flex: 1;
         display: flex;
         justify-content: center;
-        max-width: 420px;
+        max-width: 400px;
         margin: 0 auto;
         -webkit-app-region: no-drag;
     }
@@ -221,22 +223,29 @@
         background: var(--bg-secondary);
         border: 1px solid var(--glass-border);
         border-radius: var(--radius-full);
-        padding: var(--sp-2) var(--sp-3);
+        padding: 6px var(--sp-3);
         transition: var(--transition-base);
     }
 
     .search-container:focus-within,
     .search-container.focused {
         border-color: var(--accent);
-        box-shadow: 0 0 0 3px var(--accent-subtle);
+        box-shadow:
+            0 0 0 3px var(--accent-subtle),
+            var(--shadow-glow);
         background: var(--bg-primary);
     }
 
     .search-icon {
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         display: flex;
         flex-shrink: 0;
         transition: color var(--duration-fast) var(--ease-out);
+    }
+
+    .search-icon :global(svg) {
+        width: 15px;
+        height: 15px;
     }
 
     .search-container:focus-within .search-icon {
@@ -251,10 +260,11 @@
         border: none;
         outline: none;
         min-width: 0;
+        letter-spacing: 0.01em;
     }
 
     .search-input::placeholder {
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
     }
 
     .search-clear {
@@ -284,14 +294,19 @@
     }
 
     .toolbar-btn {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: var(--radius-md);
-        color: var(--text-secondary);
+        color: var(--text-tertiary);
         transition: var(--transition-fast);
+    }
+
+    .toolbar-btn :global(svg) {
+        width: 18px;
+        height: 18px;
     }
 
     .toolbar-btn:hover {
@@ -302,20 +317,26 @@
     .view-toggles {
         display: flex;
         background: var(--bg-secondary);
+        border: 1px solid var(--glass-border);
         border-radius: var(--radius-md);
         padding: 2px;
-        gap: 1px;
+        gap: 2px;
     }
 
     .view-btn {
-        width: 30px;
-        height: 28px;
+        width: 28px;
+        height: 26px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: var(--radius-sm);
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         transition: var(--transition-fast);
+    }
+
+    .view-btn :global(svg) {
+        width: 15px;
+        height: 15px;
     }
 
     .view-btn:hover {
@@ -339,7 +360,11 @@
         min-width: 180px;
         padding: var(--sp-1);
         border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
+        background: var(--glass-ultra);
+        backdrop-filter: blur(40px) saturate(2);
+        -webkit-backdrop-filter: blur(40px) saturate(2);
+        border: 1px solid var(--glass-border-strong);
+        box-shadow: var(--shadow-float);
         z-index: 200;
         animation: fadeInScale var(--duration-fast) var(--ease-spring);
         transform-origin: top right;
@@ -350,7 +375,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--sp-2) var(--sp-3);
+        padding: 7px var(--sp-3);
         border-radius: var(--radius-sm);
         font-size: var(--text-sm);
         color: var(--text-primary);
@@ -378,29 +403,34 @@
     }
 
     .zoom-icon {
-        color: var(--text-tertiary);
+        color: var(--text-quaternary);
         display: flex;
     }
 
     .zoom-icon.small :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 13px;
+        height: 13px;
     }
 
     .zoom-icon.large :global(svg) {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
     }
 
     .zoom-slider {
         -webkit-appearance: none;
         appearance: none;
-        width: 80px;
-        height: 4px;
+        width: 72px;
+        height: 3px;
         background: var(--bg-tertiary);
         border-radius: var(--radius-full);
         outline: none;
         cursor: pointer;
+        transition: background var(--duration-fast) var(--ease-out);
+    }
+
+    .zoom-slider:hover {
+        background: var(--text-quaternary);
     }
 
     .zoom-slider::-webkit-slider-thumb {
@@ -411,12 +441,12 @@
         border-radius: 50%;
         background: var(--accent);
         cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
         transition: transform var(--duration-fast) var(--ease-spring);
     }
 
     .zoom-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.2);
+        transform: scale(1.15);
     }
 
     .settings-btn {

@@ -51,6 +51,8 @@ pub fn run() {
             commands::add_to_album,
             commands::remove_from_album,
             commands::get_album_photos,
+            // Photo editor
+            commands::save_edited_photo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

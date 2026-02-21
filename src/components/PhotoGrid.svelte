@@ -9,6 +9,7 @@
         selectedPhoto,
         getThumbnail,
         appSettings,
+        updateSettings,
         isMultiSelectMode,
         selectedPhotoIds,
         togglePhotoSelection,
@@ -20,7 +21,6 @@
     let thumbnailCache = new Map<string, string>();
     let loadingSet = new Set<string>();
 
-    // Compute grid column count based on zoom
     $: columnCount = getColumnCount($appSettings.gridZoom);
 
     function getColumnCount(zoom: number): number {
@@ -85,7 +85,6 @@
         if ($isMultiSelectMode) {
             togglePhotoSelection(photo.id);
         } else {
-            // Single view select
             selectedPhoto.set(photo);
         }
     }
@@ -96,15 +95,43 @@
         }
         return 1;
     }
+
+    // Pinch-to-zoom: Ctrl+wheel (trackpad pinch gesture)
+    function handleWheel(e: WheelEvent) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const currentZoom = $appSettings.gridZoom;
+            if (e.deltaY < 0 && currentZoom < 5) {
+                updateSettings({ gridZoom: currentZoom + 1 });
+            } else if (e.deltaY > 0 && currentZoom > 1) {
+                updateSettings({ gridZoom: currentZoom - 1 });
+            }
+        }
+    }
+
+    // Expressive masonry: assign span classes based on aspect ratio
+    function getSpanClass(photo: Photo, index: number): string {
+        if ($appSettings.layoutMode !== "expressive") return "";
+        const aspect = getPhotoAspect(photo);
+        // Every 7th photo is a featured large card
+        if (index % 7 === 0) return "span-featured";
+        // Wide photos (panoramas, landscape)
+        if (aspect > 1.6) return "span-wide";
+        // Tall photos (portrait)
+        if (aspect < 0.7) return "span-tall";
+        return "";
+    }
 </script>
 
+<!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
     class="photo-grid-container"
     class:layout-compact={$appSettings.layoutMode === "compact"}
     class:layout-expressive={$appSettings.layoutMode === "expressive"}
+    on:wheel={handleWheel}
 >
-    {#each $groupedPhotos as group (group.dateKey)}
-        <div class="date-section" style="animation-delay: 0.05s">
+    {#each $groupedPhotos as group, groupIdx (group.dateKey)}
+        <div class="date-section" style="animation-delay: {groupIdx * 0.03}s">
             <div class="date-header">
                 <h2 class="date-label">{group.label}</h2>
                 <span class="date-count"
@@ -118,15 +145,18 @@
                 class="photo-grid"
                 style="--col-count: {columnCount}; --item-size: {itemSize}px;"
             >
-                {#each group.photos as photo (photo.id)}
+                {#each group.photos as photo, photoIdx (photo.id)}
                     <button
-                        class="photo-card"
+                        class="photo-card {getSpanClass(photo, photoIdx)}"
                         class:selected={$selectedPhotoIds.has(photo.id)}
                         on:click={() => openPhoto(photo)}
                         title={photo.filename}
-                        style="aspect-ratio: {$appSettings.gridZoom >= 4
+                        style="aspect-ratio: {$appSettings.layoutMode ===
+                        'expressive'
                             ? getPhotoAspect(photo)
-                            : '1'};"
+                            : $appSettings.gridZoom >= 4
+                              ? getPhotoAspect(photo)
+                              : '1'};"
                     >
                         {#if $isMultiSelectMode}
                             <div
@@ -136,17 +166,18 @@
                                 {#if $selectedPhotoIds.has(photo.id)}
                                     <svg
                                         viewBox="0 0 24 24"
-                                        width="14"
-                                        height="14"
+                                        width="12"
+                                        height="12"
                                         fill="white"
-                                        ><path
-                                            d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
-                                        /></svg
                                     >
+                                        <path
+                                            d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                                        />
+                                    </svg>
                                 {/if}
                             </div>
                         {/if}
-                        >
+
                         <div class="photo-thumb">
                             {#await loadThumbnail(photo)}
                                 <div class="placeholder">
@@ -182,14 +213,15 @@
                         {#if photo.isFavorite}
                             <div class="fav-badge">
                                 <svg
-                                    width="12"
-                                    height="12"
+                                    width="10"
+                                    height="10"
                                     viewBox="0 0 24 24"
                                     fill="#ff2d55"
-                                    ><path
-                                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                                    /></svg
                                 >
+                                    <path
+                                        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                                    />
+                                </svg>
                             </div>
                         {/if}
                     </button>
@@ -218,7 +250,7 @@
     }
 
     .date-section {
-        margin-bottom: var(--sp-8);
+        margin-bottom: var(--sp-6);
         animation: fadeInUp var(--duration-base) var(--ease-out) backwards;
     }
 
@@ -235,25 +267,25 @@
     }
 
     .date-label {
-        font-size: var(--text-lg);
+        font-size: var(--text-md);
         font-weight: 700;
         letter-spacing: var(--letter-tight);
         color: var(--text-primary);
     }
 
     .date-count {
-        font-size: var(--text-sm);
-        color: var(--text-tertiary);
+        font-size: var(--text-xs);
+        color: var(--text-quaternary);
         font-weight: 400;
     }
 
     .photo-grid {
         display: grid;
         grid-template-columns: repeat(var(--col-count), 1fr);
-        gap: var(--sp-2);
+        gap: 3px;
     }
 
-    /* Compact mode: dense, minimal spacing */
+    /* Compact mode */
     .layout-compact {
         padding: 2px;
     }
@@ -279,21 +311,53 @@
         margin-bottom: var(--sp-2);
     }
 
-    /* Expressive mode: edge-to-edge, minimal chrome */
+    /* Expressive mode — masonry grid (Google Photos-style) */
     .layout-expressive {
-        padding: var(--sp-2);
+        padding: var(--sp-1);
     }
 
     .layout-expressive .photo-grid {
-        gap: 4px;
+        gap: 3px;
+        grid-auto-flow: dense;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        grid-auto-rows: 160px;
+    }
+
+    .layout-expressive .date-header {
+        display: none;
+    }
+
+    .layout-expressive .date-section {
+        margin-bottom: 3px;
     }
 
     .layout-expressive .photo-card {
-        border-radius: 0;
+        border-radius: 3px;
     }
 
     .layout-expressive .photo-thumb img {
-        border-radius: 0;
+        border-radius: 3px;
+        object-fit: cover;
+        width: 100%;
+        height: 100%;
+    }
+
+    .layout-expressive .photo-card:hover {
+        transform: scale(1.01);
+    }
+
+    /* Masonry span classes */
+    .layout-expressive .span-wide {
+        grid-column: span 2;
+    }
+
+    .layout-expressive .span-tall {
+        grid-row: span 2;
+    }
+
+    .layout-expressive .span-featured {
+        grid-column: span 2;
+        grid-row: span 2;
     }
 
     .photo-card {
@@ -309,7 +373,7 @@
     }
 
     .photo-card:hover {
-        transform: scale(1.02);
+        transform: scale(1.018);
         box-shadow: var(--shadow-md);
         z-index: 5;
     }
@@ -357,19 +421,24 @@
 
     .placeholder-icon {
         color: var(--text-quaternary);
-        font-size: 24px;
+        font-size: 20px;
+    }
+
+    .placeholder-icon :global(svg) {
+        width: 20px;
+        height: 20px;
     }
 
     .video-badge {
         position: absolute;
-        bottom: var(--sp-2);
-        left: var(--sp-2);
-        width: 28px;
-        height: 28px;
+        bottom: 6px;
+        left: 6px;
+        width: 26px;
+        height: 26px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.55);
         backdrop-filter: blur(8px);
         border-radius: var(--radius-full);
         pointer-events: none;
@@ -377,20 +446,20 @@
 
     .video-icon {
         color: white;
-        font-size: 12px;
+        font-size: 10px;
         margin-left: 2px;
     }
 
     .fav-badge {
         position: absolute;
-        top: var(--sp-1);
-        right: var(--sp-1);
-        width: 20px;
-        height: 20px;
+        top: 5px;
+        right: 5px;
+        width: 18px;
+        height: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.45);
+        background: rgba(0, 0, 0, 0.4);
         backdrop-filter: blur(6px);
         border-radius: var(--radius-full);
         pointer-events: none;
@@ -404,7 +473,7 @@
     }
 
     .no-results-text {
-        font-size: var(--text-lg);
+        font-size: var(--text-md);
         font-weight: 500;
         color: var(--text-secondary);
         margin-bottom: var(--sp-2);
@@ -419,24 +488,23 @@
     .photo-card.selected {
         outline: 3px solid var(--accent);
         outline-offset: -3px;
-        opacity: 0.9;
     }
 
     .select-checkbox {
         position: absolute;
-        top: 6px;
-        left: 6px;
-        width: 22px;
-        height: 22px;
+        top: 5px;
+        left: 5px;
+        width: 20px;
+        height: 20px;
         border-radius: var(--radius-full);
-        border: 2px solid rgba(255, 255, 255, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.75);
         background: rgba(0, 0, 0, 0.3);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 5;
-        transition: all 0.15s ease;
+        transition: all var(--duration-fast) var(--ease-out);
         pointer-events: none;
     }
 

@@ -70,16 +70,15 @@
         display: flex;
         align-items: center;
         gap: 2px;
-        padding: 6px 8px;
+        padding: 6px 10px;
         background: var(--glass-thick);
         backdrop-filter: blur(40px) saturate(1.8);
         -webkit-backdrop-filter: blur(40px) saturate(1.8);
-        border: 1px solid var(--glass-border);
-        border-radius: 28px;
+        border: 1px solid var(--glass-border-strong);
+        border-radius: 26px;
         box-shadow:
-            var(--shadow-lg),
-            0 0 0 0.5px rgba(0, 0, 0, 0.05),
-            inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+            var(--shadow-float),
+            inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
     }
 
     .pill-item {
@@ -89,7 +88,7 @@
         align-items: center;
         gap: 2px;
         padding: 8px 18px;
-        border-radius: 22px;
+        border-radius: 20px;
         color: var(--text-tertiary);
         cursor: pointer;
         transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
@@ -117,12 +116,12 @@
     }
 
     .pill-icon :global(svg) {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
     }
 
     .pill-item.active .pill-icon {
-        transform: scale(1.1);
+        transform: scale(1.08);
     }
 
     .pill-label {
@@ -134,16 +133,16 @@
 
     .pill-badge {
         position: absolute;
-        top: 4px;
+        top: 3px;
         right: 10px;
-        min-width: 16px;
-        height: 16px;
+        min-width: 15px;
+        height: 15px;
         padding: 0 4px;
         background: #ff2d55;
         color: white;
         font-size: 9px;
         font-weight: 700;
-        border-radius: 9999px;
+        border-radius: var(--radius-full);
         display: flex;
         align-items: center;
         justify-content: center;
