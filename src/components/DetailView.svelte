@@ -640,14 +640,15 @@
 </div>
 
 <style>
+    /* ── M3 Lightbox ── */
     .lightbox {
         position: fixed;
         inset: 0;
         z-index: 500;
         display: flex;
         flex-direction: column;
-        animation: fadeIn var(--duration-fast) var(--ease-out);
-        background: rgba(0, 0, 0, 0.94);
+        animation: fadeIn var(--duration-fast) var(--ease-emphasized-decel);
+        background: rgba(0, 0, 0, 0.96);
     }
 
     .lightbox-bg {
@@ -661,12 +662,12 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        filter: blur(80px) brightness(0.25) saturate(1.4);
+        filter: blur(80px) brightness(0.2) saturate(1.5);
         transform: scale(1.3);
-        opacity: 0.5;
+        opacity: 0.4;
     }
 
-    /* Toolbar */
+    /* ── M3 Lightbox Toolbar ── */
     .lightbox-toolbar {
         position: relative;
         z-index: 10;
@@ -676,14 +677,14 @@
         padding: var(--sp-2) var(--sp-4);
         height: var(--toolbar-height);
         flex-shrink: 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .toolbar-left,
     .toolbar-right {
         display: flex;
         align-items: center;
-        gap: var(--sp-2);
+        gap: var(--sp-1);
     }
 
     .photo-position {
@@ -691,49 +692,66 @@
         color: rgba(255, 255, 255, 0.5);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
+        margin-left: var(--sp-2);
     }
 
+    /* ── M3 Icon Button (Lightbox) ── */
     .lb-btn {
-        width: 34px;
-        height: 34px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-md);
-        color: rgba(255, 255, 255, 0.65);
+        border-radius: var(--radius-full);
+        color: rgba(255, 255, 255, 0.7);
         transition: var(--transition-fast);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .lb-btn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: currentColor;
+        opacity: 0;
+        transition: opacity var(--duration-fast) var(--ease-standard);
+    }
+
+    .lb-btn:hover::before {
+        opacity: 0.08;
     }
 
     .lb-btn :global(svg) {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
+        position: relative;
+        z-index: 1;
     }
 
     .lb-btn:hover {
         color: white;
-        background: rgba(255, 255, 255, 0.1);
     }
 
     .lb-btn.active {
         color: var(--accent);
-        background: rgba(59, 130, 246, 0.15);
+    }
+
+    .lb-btn.active::before {
+        opacity: 0.12;
     }
 
     .lb-btn.danger:hover {
         color: var(--color-danger);
-        background: rgba(239, 68, 68, 0.15);
     }
 
     .lb-btn.favorite-active {
         color: #ff2d55;
     }
 
-    .lb-btn.favorite-active:hover {
-        background: rgba(255, 45, 85, 0.15);
-    }
-
     .lb-btn.favorite-animating {
-        animation: heartBeat 0.3s ease;
+        animation: heartBeat 0.3s var(--ease-emphasized);
     }
 
     @keyframes heartBeat {
@@ -751,7 +769,7 @@
         }
     }
 
-    /* Content area */
+    /* ── Content Area ── */
     .lightbox-content {
         position: relative;
         z-index: 5;
@@ -765,7 +783,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: var(--sp-4);
+        padding: var(--sp-6);
         min-width: 0;
     }
 
@@ -773,9 +791,9 @@
         max-width: 100%;
         max-height: 100%;
         object-fit: contain;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-md);
         user-select: none;
-        animation: fadeInScale var(--duration-base) var(--ease-out);
+        animation: fadeInScale var(--duration-base) var(--ease-emphasized-decel);
     }
 
     .image-loading {
@@ -785,37 +803,36 @@
     }
 
     .loading-spinner {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.08);
-        border-top-color: rgba(255, 255, 255, 0.6);
-        animation: spin 0.7s linear infinite;
+        border: 3px solid rgba(255, 255, 255, 0.08);
+        border-top-color: var(--accent);
+        animation: spin 0.8s linear infinite;
     }
 
-    /* Nav arrows */
+    /* ── M3 Nav Arrows ── */
     .nav-arrow {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
         z-index: 20;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(30, 30, 30, 0.7);
         border-radius: var(--radius-full);
-        color: rgba(255, 255, 255, 0.7);
-        transition: var(--transition-fast);
+        color: rgba(255, 255, 255, 0.8);
+        transition: var(--transition-base);
         opacity: 0;
+        box-shadow: var(--shadow-md);
     }
 
     .nav-arrow :global(svg) {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
     }
 
     .lightbox:hover .nav-arrow {
@@ -823,46 +840,46 @@
     }
 
     .nav-arrow:hover {
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(50, 50, 50, 0.9);
         color: white;
-        transform: translateY(-50%) scale(1.05);
+        transform: translateY(-50%) scale(1.08);
     }
 
     .nav-prev {
         left: var(--sp-4);
     }
-
     .nav-next {
         right: var(--sp-4);
     }
 
-    /* Info panel */
+    /* ── M3 Info Panel (Side Sheet) ── */
     .info-panel {
-        width: 280px;
+        width: 300px;
         flex-shrink: 0;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(30px) saturate(1.5);
-        -webkit-backdrop-filter: blur(30px) saturate(1.5);
-        border-left: 1px solid rgba(255, 255, 255, 0.05);
+        background: rgba(20, 20, 24, 0.85);
+        backdrop-filter: blur(40px) saturate(1.6);
+        -webkit-backdrop-filter: blur(40px) saturate(1.6);
+        border-left: 1px solid rgba(255, 255, 255, 0.06);
         overflow-y: auto;
-        animation: slideInRight var(--duration-base) var(--ease-out);
+        animation: slideInRight var(--duration-base)
+            var(--ease-emphasized-decel);
     }
 
     .info-content {
-        padding: var(--sp-5);
+        padding: var(--sp-6);
     }
 
     .info-title {
-        font-size: var(--text-md);
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.9);
-        margin-bottom: var(--sp-5);
+        font-size: var(--text-lg);
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.92);
+        margin-bottom: var(--sp-6);
     }
 
     .info-section {
         margin-bottom: var(--sp-5);
-        padding-bottom: var(--sp-4);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: var(--sp-5);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .info-section:last-child {
@@ -871,9 +888,9 @@
 
     .info-section-title {
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: var(--letter-prominent);
         color: rgba(255, 255, 255, 0.35);
         margin-bottom: var(--sp-3);
     }
@@ -883,29 +900,29 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: var(--sp-3);
-        padding: 3px 0;
+        padding: 4px 0;
     }
 
     .info-label {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.4);
+        color: rgba(255, 255, 255, 0.45);
         flex-shrink: 0;
     }
 
     .info-value {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.88);
         text-align: right;
-        max-width: 170px;
+        max-width: 180px;
     }
 
-    /* Filmstrip */
+    /* ── Filmstrip ── */
     .filmstrip-container {
         position: relative;
         z-index: 10;
         flex-shrink: 0;
         padding: var(--sp-3) var(--sp-4);
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -914,7 +931,7 @@
     .filmstrip {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         overflow-x: auto;
         max-width: 100%;
         padding: 0 var(--sp-2);
@@ -924,23 +941,24 @@
         flex-shrink: 0;
         width: 56px;
         height: 56px;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-lg);
         overflow: hidden;
         cursor: pointer;
         border: 2px solid transparent;
-        transition: var(--transition-fast);
-        opacity: 0.45;
+        transition: var(--transition-base);
+        opacity: 0.4;
     }
 
     .filmstrip-item:hover {
-        opacity: 0.75;
-        border-color: rgba(255, 255, 255, 0.15);
+        opacity: 0.7;
+        border-color: rgba(255, 255, 255, 0.2);
     }
 
     .filmstrip-item.active {
         opacity: 1;
         border-color: var(--accent);
         box-shadow: 0 0 0 2px var(--accent-subtle);
+        border-radius: var(--radius-lg);
     }
 
     .filmstrip-item img {
@@ -957,28 +975,28 @@
         background: rgba(255, 255, 255, 0.06);
     }
 
-    /* Tags */
+    /* ── M3 Tag Chips ── */
     .tags-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 5px;
+        gap: 6px;
     }
 
     .tag-chip {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        background: rgba(255, 255, 255, 0.06);
-        padding: 2px 8px;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.07);
+        padding: 4px 12px;
         border-radius: var(--radius-full);
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: var(--text-sm);
+        color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .tag-dot {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: var(--tag-color, var(--accent));
     }
@@ -986,10 +1004,10 @@
     .tag-remove {
         margin-left: 2px;
         opacity: 0.4;
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1;
         color: rgba(255, 255, 255, 0.7);
-        transition: opacity var(--duration-fast) var(--ease-out);
+        transition: opacity var(--duration-fast) var(--ease-standard);
     }
 
     .tag-remove:hover {
@@ -998,9 +1016,9 @@
     }
 
     .add-tag-btn {
-        font-size: 11px;
+        font-size: var(--text-sm);
         color: rgba(255, 255, 255, 0.4);
-        padding: 2px 8px;
+        padding: 4px 12px;
         border: 1px dashed rgba(255, 255, 255, 0.15);
         border-radius: var(--radius-full);
         transition: var(--transition-fast);
@@ -1009,83 +1027,85 @@
     .add-tag-btn:hover {
         color: var(--accent);
         border-color: var(--accent);
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(168, 199, 250, 0.08);
     }
 
+    /* ── M3 Action Button ── */
     .action-btn {
         width: 100%;
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 7px 10px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: var(--radius-sm);
-        font-size: var(--text-xs);
-        color: rgba(255, 255, 255, 0.65);
+        gap: var(--sp-3);
+        padding: 10px var(--sp-4);
+        background: rgba(255, 255, 255, 0.06);
+        border: none;
+        border-radius: var(--radius-full);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.7);
         transition: var(--transition-fast);
     }
 
     .action-icon {
         display: flex;
-        color: var(--accent-text);
+        color: var(--accent);
     }
 
     .action-icon :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .action-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.92);
     }
 
-    /* EXIF chip grid */
+    /* ── M3 EXIF Chips ── */
     .exif-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        gap: 8px;
     }
 
     .exif-chip {
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        padding: 7px var(--sp-3);
-        border-radius: var(--radius-md);
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        gap: 3px;
+        padding: 10px var(--sp-3);
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .exif-chip-label {
         font-size: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.3);
-        font-weight: 600;
+        letter-spacing: var(--letter-prominent);
+        color: rgba(255, 255, 255, 0.35);
+        font-weight: 700;
     }
 
     .exif-chip-value {
-        font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.88);
+        font-size: var(--text-base);
+        color: rgba(255, 255, 255, 0.9);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }
 
-    /* Share toast */
+    /* ── M3 Snackbar (Share Toast) ── */
     .share-toast {
         position: absolute;
-        top: calc(var(--toolbar-height) + 8px);
+        top: calc(var(--toolbar-height) + 12px);
         left: 50%;
         transform: translateX(-50%);
         z-index: 20;
-        padding: 8px 16px;
-        background: rgba(34, 197, 94, 0.9);
-        color: white;
+        padding: 10px 20px;
+        background: var(--md-sys-color-inverse-surface, rgba(34, 197, 94, 0.9));
+        color: var(--md-sys-color-inverse-on-surface, white);
         font-size: var(--text-sm);
         font-weight: 500;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
         animation: slideInUp var(--duration-fast) var(--ease-spring);
     }
 </style>

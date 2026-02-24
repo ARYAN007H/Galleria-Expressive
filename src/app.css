@@ -1,44 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;450;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 :root {
-    /* ── Colors ── */
-    --bg-app: #09090b;
-    --bg-primary: #111114;
-    --bg-secondary: #18181c;
-    --bg-tertiary: #232329;
-    --bg-elevated: #2a2a32;
+    /* ── M3 Expressive Color System (Dark) ── */
+    --md-sys-color-primary: #A8C7FA;
+    --md-sys-color-on-primary: #062E6F;
+    --md-sys-color-primary-container: #1B4B99;
+    --md-sys-color-on-primary-container: #D3E3FD;
+    --md-sys-color-primary-fixed: #D3E3FD;
 
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
-    --text-quaternary: #52525b;
-    --text-on-accent: #ffffff;
+    --md-sys-color-secondary: #BEC6DC;
+    --md-sys-color-on-secondary: #283141;
+    --md-sys-color-secondary-container: #3E4759;
+    --md-sys-color-on-secondary-container: #DAE2F9;
 
-    /* ── Accent ── */
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
-    --accent-subtle: rgba(59, 130, 246, 0.12);
-    --accent-text: #60a5fa;
-    --accent-glow: rgba(59, 130, 246, 0.25);
+    --md-sys-color-tertiary: #D5BDE2;
+    --md-sys-color-on-tertiary: #392946;
+    --md-sys-color-tertiary-container: #51405E;
+    --md-sys-color-on-tertiary-container: #F2DAFF;
 
-    /* ── Semantic Colors ── */
-    --color-danger: #ef4444;
-    --color-danger-subtle: rgba(239, 68, 68, 0.12);
-    --red-500: #ef4444;
-    --error: #ef4444;
-    --color-success: #22c55e;
-    --color-warning: #f59e0b;
+    --md-sys-color-error: #FFB4AB;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000A;
 
-    /* ── Glassmorphism ── */
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-border-strong: rgba(255, 255, 255, 0.12);
-    --glass-border-luminance: rgba(255, 255, 255, 0.18);
-    --glass-thin: rgba(18, 18, 22, 0.55);
-    --glass-thick: rgba(18, 18, 22, 0.72);
-    --glass-ultra: rgba(18, 18, 22, 0.88);
-    --bg-glass: rgba(18, 18, 22, 0.72);
+    --md-sys-color-surface: #111318;
+    --md-sys-color-on-surface: #E2E2E9;
+    --md-sys-color-on-surface-variant: #C4C6D0;
+    --md-sys-color-surface-dim: #111318;
+    --md-sys-color-surface-bright: #37393E;
+    --md-sys-color-surface-container-lowest: #0C0E13;
+    --md-sys-color-surface-container-low: #191C20;
+    --md-sys-color-surface-container: #1D2024;
+    --md-sys-color-surface-container-high: #282A2F;
+    --md-sys-color-surface-container-highest: #33353A;
 
-    /* ── Spacing ── */
+    --md-sys-color-outline: #8E9099;
+    --md-sys-color-outline-variant: #44474F;
+    --md-sys-color-inverse-surface: #E2E2E9;
+    --md-sys-color-inverse-on-surface: #2E3036;
+    --md-sys-color-inverse-primary: #3566A5;
+    --md-sys-color-scrim: #000000;
+
+    /* ── Semantic Aliases (for easy component use) ── */
+    --bg-app: var(--md-sys-color-surface);
+    --bg-primary: var(--md-sys-color-surface-container-low);
+    --bg-secondary: var(--md-sys-color-surface-container);
+    --bg-tertiary: var(--md-sys-color-surface-container-high);
+    --bg-elevated: var(--md-sys-color-surface-container-highest);
+
+    --text-primary: var(--md-sys-color-on-surface);
+    --text-secondary: var(--md-sys-color-on-surface-variant);
+    --text-tertiary: var(--md-sys-color-outline);
+    --text-quaternary: var(--md-sys-color-outline-variant);
+    --text-on-accent: var(--md-sys-color-on-primary);
+
+    --accent: var(--md-sys-color-primary);
+    --accent-hover: var(--md-sys-color-primary-container);
+    --accent-subtle: rgba(168, 199, 250, 0.12);
+    --accent-text: var(--md-sys-color-primary);
+    --accent-glow: rgba(168, 199, 250, 0.18);
+    --accent-container: var(--md-sys-color-primary-container);
+    --accent-on-container: var(--md-sys-color-on-primary-container);
+
+    --color-danger: var(--md-sys-color-error);
+    --color-danger-subtle: rgba(255, 180, 171, 0.12);
+    --red-500: #FFB4AB;
+    --error: var(--md-sys-color-error);
+    --color-success: #7DD078;
+    --color-warning: #E9B84A;
+
+    /* ── Surface Tint & Elevation (M3 tonal elevation) ── */
+    --surface-tint: var(--md-sys-color-primary);
+    --glass-border: var(--md-sys-color-outline-variant);
+    --glass-border-strong: var(--md-sys-color-outline);
+    --glass-border-luminance: rgba(255, 255, 255, 0.12);
+    --glass-thin: var(--md-sys-color-surface-container);
+    --glass-thick: var(--md-sys-color-surface-container-high);
+    --glass-ultra: var(--md-sys-color-surface-container-highest);
+    --bg-glass: var(--md-sys-color-surface-container-high);
+    --border-subtle: var(--md-sys-color-outline-variant);
+
+    /* ── Spacing (unchanged — 4px grid) ── */
     --sp-0: 0px;
     --sp-1: 4px;
     --sp-2: 8px;
@@ -51,102 +93,166 @@
     --sp-12: 48px;
     --sp-16: 64px;
 
-    /* ── Typography ── */
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
-    --text-xs: 0.6875rem;    /* 11px */
-    --text-sm: 0.8125rem;    /* 13px */
-    --text-base: 0.875rem;   /* 14px */
-    --text-md: 0.9375rem;    /* 15px */
-    --text-lg: 1.0625rem;    /* 17px */
-    --text-xl: 1.25rem;      /* 20px */
-    --text-2xl: 1.5rem;      /* 24px */
-    --text-3xl: 1.875rem;    /* 30px */
+    /* ── Typography — M3 Expressive ── */
+    --font-sans: "Outfit", "Google Sans Text", "Google Sans", "Product Sans", -apple-system, system-ui, sans-serif;
+    --font-mono: "Google Sans Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
 
-    --letter-tight: -0.02em;
+    /* M3 Type Scale */
+    --text-xs: 0.6875rem;     /* 11px — label-small */
+    --text-sm: 0.75rem;       /* 12px — body-small */
+    --text-base: 0.875rem;    /* 14px — body-medium */
+    --text-md: 1rem;          /* 16px — body-large / title-medium */
+    --text-lg: 1.125rem;      /* 18px — title-large */
+    --text-xl: 1.375rem;      /* 22px — headline-small */
+    --text-2xl: 1.75rem;      /* 28px — headline-medium */
+    --text-3xl: 2.25rem;      /* 36px — headline-large */
+    --text-display: 2.8125rem; /* 45px — display-small */
+
+    --letter-tight: -0.015em;
     --letter-normal: 0em;
     --letter-wide: 0.04em;
+    --letter-prominent: 0.1em;
 
-    /* ── Radius ── */
+    /* ── M3 Expressive Shape System ── */
     --radius-xs: 4px;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 18px;
-    --radius-2xl: 24px;
-    --radius-full: 9999px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;       /* M3 medium container */
+    --radius-2xl: 28px;       /* M3 large — expressive cards */
+    --radius-3xl: 32px;       /* M3 extra-large */
+    --radius-full: 9999px;    /* Pill shapes */
 
-    /* ── Shadows ── */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.4), 0 4px 8px -4px rgba(0, 0, 0, 0.25);
-    --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.5), 0 8px 16px -6px rgba(0, 0, 0, 0.3);
-    --shadow-float: 0 24px 48px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
-    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+    /* ── M3 Elevation (Tonal + shadow) ── */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+    --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-glow: 0 0 24px rgba(168, 199, 250, 0.12);
 
-    /* ── Animation ── */
-    --duration-instant: 80ms;
+    /* ── M3 Motion — Emphasized Easing ── */
+    --duration-instant: 50ms;
     --duration-fast: 150ms;
     --duration-base: 250ms;
     --duration-slow: 400ms;
     --duration-slower: 600ms;
+    --duration-emphasized: 500ms;
 
-    --ease-out: cubic-bezier(0.22, 0.68, 0, 1);
-    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    /* M3 Motion easing curves */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-standard-decel: cubic-bezier(0, 0, 0, 1);
+    --ease-standard-accel: cubic-bezier(0.3, 0, 1, 1);
+    /* Legacy aliases  */
+    --ease-out: var(--ease-emphasized-decel);
+    --ease-in-out: var(--ease-emphasized);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-    --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+    --ease-smooth: var(--ease-standard);
 
-    --transition-fast: all var(--duration-fast) var(--ease-out);
-    --transition-base: all var(--duration-base) var(--ease-out);
-    --transition-slow: all var(--duration-slow) var(--ease-out);
+    --transition-fast: all var(--duration-fast) var(--ease-standard);
+    --transition-base: all var(--duration-base) var(--ease-emphasized);
+    --transition-slow: all var(--duration-slow) var(--ease-emphasized);
 
     /* ── Layout ── */
-    --toolbar-height: 56px;
-    --sidebar-width: 240px;
-
-    /* ── Misc ── */
-    --border-subtle: rgba(255, 255, 255, 0.06);
+    --toolbar-height: 64px;
+    --sidebar-width: 260px;
+    --nav-bar-height: 80px;
 }
 
-/* ── Light Theme ── */
+/* ══════════════════════════════════════════
+   Light Theme — M3 Expressive
+   ══════════════════════════════════════════ */
 [data-theme="light"] {
-    --bg-app: #f5f5f7;
-    --bg-primary: #ffffff;
-    --bg-secondary: #f0f0f2;
-    --bg-tertiary: #e5e5ea;
-    --bg-elevated: #ffffff;
+    --md-sys-color-primary: #3566A5;
+    --md-sys-color-on-primary: #FFFFFF;
+    --md-sys-color-primary-container: #D3E3FD;
+    --md-sys-color-on-primary-container: #001D36;
+    --md-sys-color-primary-fixed: #D3E3FD;
 
-    --text-primary: #1d1d1f;
-    --text-secondary: #48484a;
-    --text-tertiary: #8e8e93;
-    --text-quaternary: #aeaeb2;
-    --text-on-accent: #ffffff;
+    --md-sys-color-secondary: #565F71;
+    --md-sys-color-on-secondary: #FFFFFF;
+    --md-sys-color-secondary-container: #DAE2F9;
+    --md-sys-color-on-secondary-container: #131C2B;
 
-    --glass-border: rgba(0, 0, 0, 0.06);
-    --glass-border-strong: rgba(0, 0, 0, 0.1);
-    --glass-border-luminance: rgba(255, 255, 255, 0.8);
-    --glass-thin: rgba(255, 255, 255, 0.5);
-    --glass-thick: rgba(255, 255, 255, 0.7);
-    --glass-ultra: rgba(255, 255, 255, 0.88);
-    --bg-glass: rgba(255, 255, 255, 0.7);
+    --md-sys-color-tertiary: #6E5676;
+    --md-sys-color-on-tertiary: #FFFFFF;
+    --md-sys-color-tertiary-container: #F2DAFF;
+    --md-sys-color-on-tertiary-container: #271430;
 
-    --accent-subtle: rgba(59, 130, 246, 0.08);
-    --accent-glow: rgba(59, 130, 246, 0.2);
-    --color-danger-subtle: rgba(239, 68, 68, 0.08);
+    --md-sys-color-error: #BA1A1A;
+    --md-sys-color-on-error: #FFFFFF;
+    --md-sys-color-error-container: #FFDAD6;
 
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.06);
-    --shadow-xl: 0 20px 40px -8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
-    --shadow-float: 0 24px 48px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
-    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.1);
+    --md-sys-color-surface: #F9F9FF;
+    --md-sys-color-on-surface: #191C20;
+    --md-sys-color-on-surface-variant: #44474F;
+    --md-sys-color-surface-dim: #D9D9E0;
+    --md-sys-color-surface-bright: #F9F9FF;
+    --md-sys-color-surface-container-lowest: #FFFFFF;
+    --md-sys-color-surface-container-low: #F3F3FA;
+    --md-sys-color-surface-container: #EDEDF4;
+    --md-sys-color-surface-container-high: #E7E8EE;
+    --md-sys-color-surface-container-highest: #E1E2E9;
 
-    --border-subtle: rgba(0, 0, 0, 0.06);
+    --md-sys-color-outline: #74777F;
+    --md-sys-color-outline-variant: #C4C6D0;
+    --md-sys-color-inverse-surface: #2E3036;
+    --md-sys-color-inverse-on-surface: #F0F0F7;
+    --md-sys-color-inverse-primary: #A8C7FA;
+
+    /* Re-derive semantic aliases */
+    --bg-app: var(--md-sys-color-surface);
+    --bg-primary: var(--md-sys-color-surface-container-low);
+    --bg-secondary: var(--md-sys-color-surface-container);
+    --bg-tertiary: var(--md-sys-color-surface-container-high);
+    --bg-elevated: var(--md-sys-color-surface-container-highest);
+
+    --text-primary: var(--md-sys-color-on-surface);
+    --text-secondary: var(--md-sys-color-on-surface-variant);
+    --text-tertiary: var(--md-sys-color-outline);
+    --text-quaternary: var(--md-sys-color-outline-variant);
+    --text-on-accent: var(--md-sys-color-on-primary);
+
+    --accent: var(--md-sys-color-primary);
+    --accent-hover: var(--md-sys-color-primary-container);
+    --accent-subtle: rgba(53, 102, 165, 0.08);
+    --accent-text: var(--md-sys-color-primary);
+    --accent-glow: rgba(53, 102, 165, 0.12);
+    --accent-container: var(--md-sys-color-primary-container);
+    --accent-on-container: var(--md-sys-color-on-primary-container);
+
+    --color-danger: var(--md-sys-color-error);
+    --color-danger-subtle: rgba(186, 26, 26, 0.08);
+    --red-500: #BA1A1A;
+    --error: var(--md-sys-color-error);
+    --color-success: #1B6D26;
+    --color-warning: #7D5700;
+
+    --glass-border: var(--md-sys-color-outline-variant);
+    --glass-border-strong: var(--md-sys-color-outline);
+    --glass-border-luminance: rgba(0, 0, 0, 0.08);
+    --glass-thin: var(--md-sys-color-surface-container);
+    --glass-thick: var(--md-sys-color-surface-container-high);
+    --glass-ultra: var(--md-sys-color-surface-container-highest);
+    --bg-glass: var(--md-sys-color-surface-container-high);
+    --border-subtle: var(--md-sys-color-outline-variant);
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-xl: 0 8px 28px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+    --shadow-float: 0 12px 32px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 0 24px rgba(53, 102, 165, 0.08);
 }
 
-/* ── Global Reset ── */
+/* ══════════════════════════════════════════
+   Global Reset — M3 Baseline
+   ══════════════════════════════════════════ */
 *,
 *::before,
 *::after {
@@ -196,7 +302,7 @@ a {
     text-decoration: none;
 }
 
-/* ── Scrollbars — Ultra Thin Apple Style ── */
+/* ── M3 Scrollbars ── */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -207,44 +313,55 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--md-sys-color-outline-variant);
     border-radius: var(--radius-full);
     border: 2px solid transparent;
     background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--md-sys-color-outline);
     background-clip: content-box;
 }
 
-[data-theme="light"] ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.12);
-    background-clip: content-box;
+/* ── M3 State Layer Utility ── */
+.state-layer {
+    position: relative;
+    overflow: hidden;
 }
 
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
-    background-clip: content-box;
+.state-layer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+    z-index: 1;
 }
 
-/* ── Glass Utility Classes ── */
+.state-layer:hover::before {
+    opacity: 0.08;
+}
+
+.state-layer:active::before,
+.state-layer:focus-visible::before {
+    opacity: 0.12;
+}
+
+/* ── Glass Utility Classes (M3 tonal equivalent) ── */
 .glass-thin {
-    background: var(--glass-thin);
-    backdrop-filter: blur(16px) saturate(1.6);
-    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    background: var(--md-sys-color-surface-container);
 }
 
 .glass-thick {
-    background: var(--glass-thick);
-    backdrop-filter: blur(24px) saturate(1.8);
-    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    background: var(--md-sys-color-surface-container-high);
 }
 
 .glass-ultra {
-    background: var(--glass-ultra);
-    backdrop-filter: blur(40px) saturate(2);
-    -webkit-backdrop-filter: blur(40px) saturate(2);
+    background: var(--md-sys-color-surface-container-highest);
 }
 
 /* ── Utility Classes ── */
@@ -263,7 +380,9 @@ a {
     display: none;
 }
 
-/* ── Keyframe Animations ── */
+/* ══════════════════════════════════════════
+   M3 Keyframe Animations
+   ══════════════════════════════════════════ */
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -272,7 +391,7 @@ a {
 @keyframes fadeInScale {
     from {
         opacity: 0;
-        transform: scale(0.96);
+        transform: scale(0.92);
     }
     to {
         opacity: 1;
@@ -283,7 +402,7 @@ a {
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(12px);
     }
     to {
         opacity: 1;
@@ -294,7 +413,7 @@ a {
 @keyframes slideInLeft {
     from {
         opacity: 0;
-        transform: translateX(-16px);
+        transform: translateX(-20px);
     }
     to {
         opacity: 1;
@@ -305,7 +424,7 @@ a {
 @keyframes slideInRight {
     from {
         opacity: 0;
-        transform: translateX(16px);
+        transform: translateX(20px);
     }
     to {
         opacity: 1;
@@ -316,7 +435,7 @@ a {
 @keyframes slideInUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(24px);
     }
     to {
         opacity: 1;
@@ -340,5 +459,29 @@ a {
 
 @keyframes breathe {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+    50% { transform: scale(1.03); }
+}
+
+/* M3 Ripple effect */
+@keyframes m3-ripple {
+    from {
+        transform: scale(0);
+        opacity: 0.12;
+    }
+    to {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+/* M3 indicator slide animation */
+@keyframes indicatorSlide {
+    from {
+        transform: scaleX(0.6);
+        opacity: 0;
+    }
+    to {
+        transform: scaleX(1);
+        opacity: 1;
+    }
 }

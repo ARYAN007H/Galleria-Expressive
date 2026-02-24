@@ -3,7 +3,7 @@ use std::fs;
 use std::io;
 use tauri::Manager;
 
-const THUMB_SIZE: u32 = 256;
+const THUMB_SIZE: u32 = 320;
 
 pub fn thumbnail_cache_dir(app_handle: &tauri::AppHandle) -> io::Result<PathBuf> {
     let cache = app_handle
@@ -29,11 +29,8 @@ pub fn get_or_create_thumbnail(
 ) -> Result<PathBuf, String> {
     let cache_dir = thumbnail_cache_dir(app_handle).map_err(|e| e.to_string())?;
     let key = hash_path(source_path);
-    let ext = Path::new(source_path)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("jpg");
-    let thumb_path = cache_dir.join(format!("{}.{}", key, ext));
+    // Always use .jpg — ensures the webview can always render thumbnails
+    let thumb_path = cache_dir.join(format!("{}.jpg", key));
 
     if thumb_path.exists() {
         return Ok(thumb_path);
@@ -55,6 +52,7 @@ pub fn get_or_create_thumbnail(
         .map_err(|e| e.to_string())?;
 
     let thumb = img.thumbnail(THUMB_SIZE, THUMB_SIZE);
+    // Save as JPEG regardless of source format — guarantees browser/webview compatibility
     thumb
         .save(&thumb_path)
         .map_err(|e| e.to_string())?;

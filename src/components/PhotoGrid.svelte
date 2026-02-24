@@ -113,11 +113,8 @@
     function getSpanClass(photo: Photo, index: number): string {
         if ($appSettings.layoutMode !== "expressive") return "";
         const aspect = getPhotoAspect(photo);
-        // Every 7th photo is a featured large card
         if (index % 7 === 0) return "span-featured";
-        // Wide photos (panoramas, landscape)
         if (aspect > 1.6) return "span-wide";
-        // Tall photos (portrait)
         if (aspect < 0.7) return "span-tall";
         return "";
     }
@@ -131,7 +128,7 @@
     on:wheel={handleWheel}
 >
     {#each $groupedPhotos as group, groupIdx (group.dateKey)}
-        <div class="date-section" style="animation-delay: {groupIdx * 0.03}s">
+        <div class="date-section" style="animation-delay: {groupIdx * 0.04}s">
             <div class="date-header">
                 <h2 class="date-label">{group.label}</h2>
                 <span class="date-count"
@@ -166,8 +163,8 @@
                                 {#if $selectedPhotoIds.has(photo.id)}
                                     <svg
                                         viewBox="0 0 24 24"
-                                        width="12"
-                                        height="12"
+                                        width="14"
+                                        height="14"
                                         fill="white"
                                     >
                                         <path
@@ -213,8 +210,8 @@
                         {#if photo.isFavorite}
                             <div class="fav-badge">
                                 <svg
-                                    width="10"
-                                    height="10"
+                                    width="12"
+                                    height="12"
                                     viewBox="0 0 24 24"
                                     fill="#ff2d55"
                                 >
@@ -241,6 +238,7 @@
 </div>
 
 <style>
+    /* ── M3 Photo Grid Container ── */
     .photo-grid-container {
         flex: 1;
         overflow-y: auto;
@@ -250,8 +248,9 @@
     }
 
     .date-section {
-        margin-bottom: var(--sp-6);
-        animation: fadeInUp var(--duration-base) var(--ease-out) backwards;
+        margin-bottom: var(--sp-8);
+        animation: fadeInUp var(--duration-base) var(--ease-emphasized-decel)
+            backwards;
     }
 
     .date-header {
@@ -275,14 +274,15 @@
 
     .date-count {
         font-size: var(--text-xs);
-        color: var(--text-quaternary);
-        font-weight: 400;
+        color: var(--text-tertiary);
+        font-weight: 500;
     }
 
+    /* ── M3 Grid ── */
     .photo-grid {
         display: grid;
         grid-template-columns: repeat(var(--col-count), 1fr);
-        gap: 3px;
+        gap: 4px;
     }
 
     /* Compact mode */
@@ -295,11 +295,11 @@
     }
 
     .layout-compact .photo-card {
-        border-radius: 2px;
+        border-radius: var(--radius-xs);
     }
 
     .layout-compact .photo-thumb img {
-        border-radius: 2px;
+        border-radius: var(--radius-xs);
     }
 
     .layout-compact .date-header {
@@ -311,13 +311,13 @@
         margin-bottom: var(--sp-2);
     }
 
-    /* Expressive mode — masonry grid (Google Photos-style) */
+    /* ── Expressive Mode — M3 Masonry ── */
     .layout-expressive {
-        padding: var(--sp-1);
+        padding: var(--sp-2);
     }
 
     .layout-expressive .photo-grid {
-        gap: 3px;
+        gap: 4px;
         grid-auto-flow: dense;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         grid-auto-rows: 160px;
@@ -328,22 +328,22 @@
     }
 
     .layout-expressive .date-section {
-        margin-bottom: 3px;
+        margin-bottom: 4px;
     }
 
     .layout-expressive .photo-card {
-        border-radius: 3px;
+        border-radius: var(--radius-lg);
     }
 
     .layout-expressive .photo-thumb img {
-        border-radius: 3px;
+        border-radius: var(--radius-lg);
         object-fit: cover;
         width: 100%;
         height: 100%;
     }
 
     .layout-expressive .photo-card:hover {
-        transform: scale(1.01);
+        transform: scale(1.015);
     }
 
     /* Masonry span classes */
@@ -360,20 +360,21 @@
         grid-row: span 2;
     }
 
+    /* ── M3 Photo Card ── */
     .photo-card {
         position: relative;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-lg);
         overflow: hidden;
         cursor: pointer;
-        background: var(--bg-secondary);
+        background: var(--md-sys-color-surface-container-high);
         transition:
-            transform var(--duration-fast) var(--ease-spring),
-            box-shadow var(--duration-fast) var(--ease-out);
+            transform var(--duration-base) var(--ease-emphasized),
+            box-shadow var(--duration-base) var(--ease-standard);
         will-change: transform;
     }
 
     .photo-card:hover {
-        transform: scale(1.018);
+        transform: scale(1.02);
         box-shadow: var(--shadow-md);
         z-index: 5;
     }
@@ -394,16 +395,17 @@
         height: 100%;
         object-fit: cover;
         display: block;
-        transition: opacity var(--duration-base) var(--ease-out);
+        transition: opacity var(--duration-base) var(--ease-standard);
     }
 
+    /* ── M3 Placeholder ── */
     .placeholder {
         width: 100%;
         height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--bg-tertiary);
+        background: var(--md-sys-color-surface-container-highest);
     }
 
     .placeholder-shimmer {
@@ -411,100 +413,102 @@
         height: 100%;
         background: linear-gradient(
             90deg,
-            var(--bg-tertiary) 25%,
-            var(--bg-secondary) 50%,
-            var(--bg-tertiary) 75%
+            var(--md-sys-color-surface-container-high) 25%,
+            var(--md-sys-color-surface-container-highest) 50%,
+            var(--md-sys-color-surface-container-high) 75%
         );
         background-size: 200% 100%;
         animation: shimmer 1.5s infinite;
     }
 
     .placeholder-icon {
-        color: var(--text-quaternary);
-        font-size: 20px;
+        color: var(--text-tertiary);
+        font-size: 22px;
     }
 
     .placeholder-icon :global(svg) {
-        width: 20px;
-        height: 20px;
+        width: 22px;
+        height: 22px;
     }
 
+    /* ── M3 Video Badge ── */
     .video-badge {
         position: absolute;
-        bottom: 6px;
-        left: 6px;
-        width: 26px;
-        height: 26px;
+        bottom: 8px;
+        left: 8px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.55);
-        backdrop-filter: blur(8px);
+        background: var(--md-sys-color-surface-container-high);
         border-radius: var(--radius-full);
         pointer-events: none;
+        box-shadow: var(--shadow-sm);
     }
 
     .video-icon {
-        color: white;
+        color: var(--md-sys-color-on-surface);
         font-size: 10px;
         margin-left: 2px;
     }
 
+    /* ── M3 Favorite Badge ── */
     .fav-badge {
         position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 18px;
-        height: 18px;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(6px);
+        background: var(--md-sys-color-surface-container-high);
         border-radius: var(--radius-full);
         pointer-events: none;
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+        box-shadow: var(--shadow-sm);
     }
 
+    /* ── No Results ── */
     .no-results {
         text-align: center;
         padding: var(--sp-16) var(--sp-8);
-        animation: fadeIn var(--duration-base) var(--ease-out);
+        animation: fadeIn var(--duration-base) var(--ease-emphasized-decel);
     }
 
     .no-results-text {
-        font-size: var(--text-md);
-        font-weight: 500;
+        font-size: var(--text-lg);
+        font-weight: 600;
         color: var(--text-secondary);
         margin-bottom: var(--sp-2);
     }
 
     .no-results-hint {
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
         color: var(--text-tertiary);
     }
 
-    /* Multi-select */
+    /* ── M3 Multi-Select ── */
     .photo-card.selected {
         outline: 3px solid var(--accent);
         outline-offset: -3px;
+        border-radius: var(--radius-lg);
     }
 
     .select-checkbox {
         position: absolute;
-        top: 5px;
-        left: 5px;
-        width: 20px;
-        height: 20px;
+        top: 6px;
+        left: 6px;
+        width: 22px;
+        height: 22px;
         border-radius: var(--radius-full);
-        border: 2px solid rgba(255, 255, 255, 0.75);
-        background: rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(4px);
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        background: rgba(0, 0, 0, 0.25);
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 5;
-        transition: all var(--duration-fast) var(--ease-out);
+        transition: all var(--duration-fast) var(--ease-standard);
         pointer-events: none;
     }
 

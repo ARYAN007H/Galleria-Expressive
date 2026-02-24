@@ -126,6 +126,7 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        background: var(--bg-app);
     }
 
     .app-body {
@@ -142,10 +143,10 @@
     }
 
     .main-content.has-pill {
-        padding-bottom: 90px;
+        padding-bottom: calc(var(--nav-bar-height) + 8px);
     }
 
-    /* Indexing State */
+    /* ── M3 Indexing State ── */
     .indexing-state {
         flex: 1;
         display: flex;
@@ -153,14 +154,14 @@
         align-items: center;
         justify-content: center;
         gap: var(--sp-4);
-        animation: fadeIn var(--duration-slow) var(--ease-out);
+        animation: fadeIn var(--duration-slow) var(--ease-emphasized-decel);
     }
 
     .indexing-spinner {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        border: 3px solid var(--glass-border-strong);
+        border: 3px solid var(--md-sys-color-outline-variant);
         border-top-color: var(--accent);
         animation: spin 0.8s linear infinite;
     }
@@ -173,7 +174,7 @@
 
     .indexing-text {
         font-size: var(--text-md);
-        font-weight: 500;
+        font-weight: 600;
         color: var(--text-primary);
     }
 

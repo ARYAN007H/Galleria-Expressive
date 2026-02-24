@@ -63,7 +63,7 @@
 <header class="toolbar">
     <div class="toolbar-left">
         <button
-            class="toolbar-btn"
+            class="m3-icon-btn"
             on:click={toggleSidebar}
             title="Toggle Sidebar"
         >
@@ -122,7 +122,7 @@
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="sort-wrapper" on:click|stopPropagation>
             <button
-                class="toolbar-btn"
+                class="m3-icon-btn"
                 on:click={() => (showSortMenu = !showSortMenu)}
                 title="Sort"
             >
@@ -160,7 +160,7 @@
         </div>
 
         <button
-            class="toolbar-btn settings-btn"
+            class="m3-icon-btn settings-btn"
             on:click|stopPropagation={() => showSettings.update((v) => !v)}
             title="Settings"
         >
@@ -170,24 +170,19 @@
 </header>
 
 <style>
+    /* ── M3 Top App Bar ── */
     .toolbar {
         height: var(--toolbar-height);
         display: flex;
         align-items: center;
-        gap: var(--sp-4);
+        gap: var(--sp-3);
         padding: 0 var(--sp-4);
-        border-bottom: 1px solid var(--glass-border);
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
         flex-shrink: 0;
         z-index: 100;
-        background: var(--glass-thick);
-        backdrop-filter: blur(30px) saturate(1.8);
-        -webkit-backdrop-filter: blur(30px) saturate(1.8);
+        background: var(--md-sys-color-surface-container);
         user-select: none;
         -webkit-app-region: drag;
-        /* Subtle inner light for liquid glass */
-        box-shadow:
-            inset 0 -1px 0 var(--glass-border),
-            inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
 
     .toolbar-left {
@@ -200,52 +195,52 @@
 
     .photo-count {
         font-size: var(--text-sm);
-        color: var(--text-tertiary);
+        color: var(--text-secondary);
         font-weight: 500;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
     }
 
     .toolbar-center {
         flex: 1;
         display: flex;
         justify-content: center;
-        max-width: 400px;
+        max-width: 480px;
         margin: 0 auto;
         -webkit-app-region: no-drag;
     }
 
+    /* ── M3 Search Bar (Pill Shape) ── */
     .search-container {
         display: flex;
         align-items: center;
         width: 100%;
         gap: var(--sp-2);
-        background: var(--bg-secondary);
-        border: 1px solid var(--glass-border);
+        background: var(--md-sys-color-surface-container-highest);
+        border: none;
         border-radius: var(--radius-full);
-        padding: 6px var(--sp-3);
+        padding: 8px var(--sp-4);
         transition: var(--transition-base);
+        min-height: 44px;
     }
 
     .search-container:focus-within,
     .search-container.focused {
-        border-color: var(--accent);
-        box-shadow:
-            0 0 0 3px var(--accent-subtle),
-            var(--shadow-glow);
-        background: var(--bg-primary);
+        background: var(--md-sys-color-surface-container-highest);
+        box-shadow: 0 0 0 2px var(--accent);
     }
 
     .search-icon {
-        color: var(--text-quaternary);
+        color: var(--text-secondary);
         display: flex;
         flex-shrink: 0;
-        transition: color var(--duration-fast) var(--ease-out);
+        transition: color var(--duration-fast) var(--ease-standard);
     }
 
     .search-icon :global(svg) {
-        width: 15px;
-        height: 15px;
+        width: 18px;
+        height: 18px;
     }
 
     .search-container:focus-within .search-icon {
@@ -254,7 +249,7 @@
 
     .search-input {
         flex: 1;
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
         color: var(--text-primary);
         background: none;
         border: none;
@@ -264,26 +259,26 @@
     }
 
     .search-input::placeholder {
-        color: var(--text-quaternary);
+        color: var(--text-tertiary);
     }
 
     .search-clear {
         display: flex;
         align-items: center;
-        padding: 2px;
+        padding: 4px;
         border-radius: var(--radius-full);
-        color: var(--text-tertiary);
+        color: var(--text-secondary);
         transition: var(--transition-fast);
     }
 
     .search-clear:hover {
         color: var(--text-primary);
-        background: var(--glass-border-strong);
+        background: var(--accent-subtle);
     }
 
     .search-clear :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .toolbar-right {
@@ -293,62 +288,84 @@
         -webkit-app-region: no-drag;
     }
 
-    .toolbar-btn {
-        width: 32px;
+    /* ── M3 Icon Button ── */
+    .m3-icon-btn {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-full);
+        color: var(--text-secondary);
+        transition: var(--transition-fast);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .m3-icon-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: currentColor;
+        opacity: 0;
+        transition: opacity var(--duration-fast) var(--ease-standard);
+    }
+
+    .m3-icon-btn:hover::before {
+        opacity: 0.08;
+    }
+
+    .m3-icon-btn:active::before {
+        opacity: 0.12;
+    }
+
+    .m3-icon-btn :global(svg) {
+        width: 20px;
+        height: 20px;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* ── M3 Segmented Button (View Toggle) ── */
+    .view-toggles {
+        display: flex;
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--radius-full);
+        padding: 2px;
+        gap: 0;
+    }
+
+    .view-btn {
+        width: 36px;
         height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-md);
-        color: var(--text-tertiary);
-        transition: var(--transition-fast);
-    }
-
-    .toolbar-btn :global(svg) {
-        width: 18px;
-        height: 18px;
-    }
-
-    .toolbar-btn:hover {
-        color: var(--text-primary);
-        background: var(--accent-subtle);
-    }
-
-    .view-toggles {
-        display: flex;
-        background: var(--bg-secondary);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-md);
-        padding: 2px;
-        gap: 2px;
-    }
-
-    .view-btn {
-        width: 28px;
-        height: 26px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--radius-sm);
-        color: var(--text-quaternary);
-        transition: var(--transition-fast);
+        border-radius: var(--radius-full);
+        color: var(--text-secondary);
+        transition: var(--transition-base);
+        position: relative;
     }
 
     .view-btn :global(svg) {
-        width: 15px;
-        height: 15px;
+        width: 16px;
+        height: 16px;
+        position: relative;
+        z-index: 1;
     }
 
     .view-btn:hover {
-        color: var(--text-secondary);
+        color: var(--text-primary);
     }
 
     .view-btn.active {
-        background: var(--bg-primary);
-        color: var(--accent);
-        box-shadow: var(--shadow-xs);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
     }
 
+    /* ── Sort Menu ── */
     .sort-wrapper {
         position: relative;
     }
@@ -357,16 +374,14 @@
         position: absolute;
         top: calc(100% + var(--sp-2));
         right: 0;
-        min-width: 180px;
+        min-width: 200px;
         padding: var(--sp-1);
         border-radius: var(--radius-lg);
-        background: var(--glass-ultra);
-        backdrop-filter: blur(40px) saturate(2);
-        -webkit-backdrop-filter: blur(40px) saturate(2);
-        border: 1px solid var(--glass-border-strong);
-        box-shadow: var(--shadow-float);
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        box-shadow: var(--shadow-lg);
         z-index: 200;
-        animation: fadeInScale var(--duration-fast) var(--ease-spring);
+        animation: fadeInScale var(--duration-base) var(--ease-emphasized-decel);
         transform-origin: top right;
     }
 
@@ -375,9 +390,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 7px var(--sp-3);
-        border-radius: var(--radius-sm);
-        font-size: var(--text-sm);
+        padding: 10px var(--sp-4);
+        border-radius: var(--radius-full);
+        font-size: var(--text-base);
         color: var(--text-primary);
         transition: var(--transition-fast);
     }
@@ -388,7 +403,7 @@
 
     .sort-option.active {
         color: var(--accent);
-        font-weight: 500;
+        font-weight: 600;
     }
 
     .sort-option .check {
@@ -396,6 +411,7 @@
         display: flex;
     }
 
+    /* ── M3 Zoom Slider ── */
     .zoom-control {
         display: flex;
         align-items: center;
@@ -403,50 +419,50 @@
     }
 
     .zoom-icon {
-        color: var(--text-quaternary);
+        color: var(--text-tertiary);
         display: flex;
     }
 
     .zoom-icon.small :global(svg) {
-        width: 13px;
-        height: 13px;
+        width: 14px;
+        height: 14px;
     }
 
     .zoom-icon.large :global(svg) {
-        width: 15px;
-        height: 15px;
+        width: 16px;
+        height: 16px;
     }
 
     .zoom-slider {
         -webkit-appearance: none;
         appearance: none;
-        width: 72px;
-        height: 3px;
-        background: var(--bg-tertiary);
+        width: 80px;
+        height: 4px;
+        background: var(--md-sys-color-surface-container-highest);
         border-radius: var(--radius-full);
         outline: none;
         cursor: pointer;
-        transition: background var(--duration-fast) var(--ease-out);
+        transition: background var(--duration-fast) var(--ease-standard);
     }
 
     .zoom-slider:hover {
-        background: var(--text-quaternary);
+        background: var(--md-sys-color-outline-variant);
     }
 
     .zoom-slider::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
         background: var(--accent);
         cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+        box-shadow: var(--shadow-sm);
         transition: transform var(--duration-fast) var(--ease-spring);
     }
 
     .zoom-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.15);
+        transform: scale(1.2);
     }
 
     .settings-btn {

@@ -8,7 +8,7 @@
 
     export let photo: Photo;
     export let selected: boolean = false;
-    export let size: number = 200; // default approximate size
+    export let size: number = 200;
 
     let src: string = "";
     let visible = false;
@@ -34,7 +34,6 @@
     });
 
     async function loadThumbnail() {
-        // Use the store helper which calls the backend
         const rawPath = await getThumbnail(photo.path);
         if (rawPath) {
             src = convertFileSrc(rawPath);
@@ -94,7 +93,6 @@
                             fill="white"><path d="M8 5v14l11-7z" /></svg
                         ></span
                     >
-                    <!-- generic duration if not available -->
                     <span>Video</span>
                 </div>
             {/if}
@@ -103,19 +101,20 @@
 </div>
 
 <style>
+    /* ── M3 Thumbnail Container ── */
     .thumbnail-container {
         position: relative;
         width: 100%;
         height: 100%;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-lg);
         overflow: hidden;
-        background-color: var(--bg-secondary);
+        background-color: var(--md-sys-color-surface-container-high);
         cursor: pointer;
-        transition: transform 0.1s ease;
+        transition: transform var(--duration-fast) var(--ease-emphasized);
     }
 
     .thumbnail-container:active {
-        transform: scale(0.98);
+        transform: scale(0.97);
     }
 
     .thumbnail-container.selected {
@@ -123,7 +122,8 @@
     }
 
     .thumbnail-container.selected .thumb-img {
-        transform: scale(0.95);
+        transform: scale(0.94);
+        border-radius: var(--radius-md);
     }
 
     .thumb-img {
@@ -131,13 +131,13 @@
         height: 100%;
         object-fit: cover;
         display: block;
-        transition: transform 0.2s ease;
+        transition: transform var(--duration-base) var(--ease-emphasized);
     }
 
     .placeholder {
         width: 100%;
         height: 100%;
-        background-color: var(--bg-secondary);
+        background-color: var(--md-sys-color-surface-container-highest);
     }
 
     .overlay {
@@ -147,33 +147,34 @@
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: 6px;
+        padding: 8px;
     }
 
     .top-row {
         display: flex;
         justify-content: flex-end;
-        gap: 4px;
+        gap: 6px;
     }
 
+    /* ── M3 Badges ── */
     .icon-indicator {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 50%;
+        border-radius: var(--radius-full);
         color: white;
     }
 
     .favorite {
-        color: var(--red-500);
-        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+        color: #ff2d55;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
     }
 
     .selection-check {
         background-color: var(--accent);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-sm);
     }
 
     .selection-check :global(svg) {
@@ -183,8 +184,8 @@
     }
 
     .favorite :global(svg) {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
     }
 
     .bottom-row {
@@ -196,18 +197,18 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        background-color: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        padding: 2px 6px;
-        border-radius: 4px;
-        color: white;
-        font-size: 10px;
-        font-weight: 500;
+        background-color: var(--md-sys-color-surface-container-high);
+        padding: 3px 8px;
+        border-radius: var(--radius-full);
+        color: var(--md-sys-color-on-surface);
+        font-size: 11px;
+        font-weight: 600;
+        box-shadow: var(--shadow-sm);
     }
 
     .play-icon :global(svg) {
         width: 10px;
         height: 10px;
-        fill: white;
+        fill: currentColor;
     }
 </style>

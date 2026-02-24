@@ -134,6 +134,9 @@
                                 >{getSectionCount(section.id)}</span
                             >
                         {/if}
+                        {#if $activeSection === section.id && !$filters.selectedFolder}
+                            <div class="active-indicator"></div>
+                        {/if}
                     </button>
                 {/each}
             </nav>
@@ -313,18 +316,17 @@
 </aside>
 
 <style>
+    /* ── M3 Navigation Drawer ── */
     .sidebar {
         width: var(--sidebar-width);
         height: 100%;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid var(--glass-border);
-        background: var(--glass-thin);
-        backdrop-filter: blur(20px) saturate(1.6);
-        -webkit-backdrop-filter: blur(20px) saturate(1.6);
+        border-right: 1px solid var(--md-sys-color-outline-variant);
+        background: var(--md-sys-color-surface-container-low);
         flex-shrink: 0;
         overflow: hidden;
-        animation: slideInLeft var(--duration-base) var(--ease-out);
+        animation: slideInLeft var(--duration-base) var(--ease-emphasized-decel);
         user-select: none;
     }
 
@@ -336,7 +338,7 @@
     }
 
     .sidebar-section {
-        margin-bottom: var(--sp-5);
+        margin-bottom: var(--sp-6);
     }
 
     .section-header {
@@ -350,20 +352,20 @@
         font-size: 11px;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-quaternary);
-        padding: var(--sp-1) var(--sp-2);
+        letter-spacing: var(--letter-prominent);
+        color: var(--text-tertiary);
+        padding: var(--sp-2) var(--sp-3);
         margin-bottom: 2px;
     }
 
     .section-action-btn {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-sm);
-        color: var(--text-quaternary);
+        border-radius: var(--radius-full);
+        color: var(--text-tertiary);
         transition: var(--transition-fast);
         opacity: 0;
     }
@@ -378,7 +380,7 @@
     }
 
     .section-action-btn:hover {
-        color: var(--text-secondary);
+        color: var(--text-primary);
         background: var(--accent-subtle);
     }
 
@@ -387,9 +389,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--sp-1) var(--sp-2);
+        padding: var(--sp-2) var(--sp-3);
         margin-bottom: 2px;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
         transition: var(--transition-fast);
     }
 
@@ -399,13 +401,13 @@
 
     .chevron {
         display: flex;
-        color: var(--text-quaternary);
-        transition: transform var(--duration-fast) var(--ease-out);
+        color: var(--text-tertiary);
+        transition: transform var(--duration-base) var(--ease-emphasized);
     }
 
     .chevron :global(svg) {
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
     }
 
     .chevron.expanded {
@@ -419,20 +421,22 @@
     .nav-list {
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 2px;
     }
 
+    /* ── M3 Nav Item with Indicator Pill ── */
     .nav-item {
         display: flex;
         align-items: center;
-        gap: var(--sp-2);
-        padding: 6px var(--sp-3);
-        border-radius: var(--radius-md);
+        gap: var(--sp-3);
+        padding: 10px var(--sp-4);
+        border-radius: var(--radius-full);
         color: var(--text-primary);
-        font-size: var(--text-sm);
-        font-weight: 450;
-        transition: var(--transition-fast);
-        min-height: 32px;
+        font-size: var(--text-base);
+        font-weight: 500;
+        transition: var(--transition-base);
+        min-height: 40px;
+        position: relative;
     }
 
     .nav-item:hover {
@@ -440,28 +444,34 @@
     }
 
     .nav-item.active {
-        background: var(--accent);
-        color: var(--text-on-accent);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        font-weight: 600;
     }
 
     .nav-item.active .nav-icon {
-        color: var(--text-on-accent);
+        color: var(--md-sys-color-on-secondary-container);
     }
 
     .nav-item.active .nav-count {
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--md-sys-color-on-secondary-container);
+        opacity: 0.7;
+    }
+
+    .active-indicator {
+        display: none; /* Handled via background color in M3 style */
     }
 
     .nav-icon {
         display: flex;
         flex-shrink: 0;
-        color: var(--text-tertiary);
-        transition: color var(--duration-fast) var(--ease-out);
+        color: var(--text-secondary);
+        transition: color var(--duration-fast) var(--ease-standard);
     }
 
     .nav-icon :global(svg) {
-        width: 17px;
-        height: 17px;
+        width: 20px;
+        height: 20px;
     }
 
     .source-icon {
@@ -469,12 +479,12 @@
     }
 
     .nav-item.active .source-icon {
-        color: var(--text-on-accent);
+        color: var(--md-sys-color-on-secondary-container);
     }
 
     .tag-dot {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         flex-shrink: 0;
         margin-left: var(--sp-1);
@@ -486,20 +496,20 @@
     }
 
     .nav-count {
-        font-size: 11px;
-        color: var(--text-quaternary);
+        font-size: var(--text-xs);
+        color: var(--text-tertiary);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }
 
     .folder-list {
-        max-height: 200px;
+        max-height: 220px;
         overflow-y: auto;
         padding-right: var(--sp-1);
     }
 
     .manage-link {
-        font-size: var(--text-xs);
+        font-size: var(--text-sm);
         color: var(--accent-text);
         font-weight: 500;
     }
@@ -509,56 +519,59 @@
     }
 
     .empty-hint {
-        padding: var(--sp-2) var(--sp-3);
-        font-size: var(--text-xs);
-        color: var(--text-quaternary);
+        padding: var(--sp-3) var(--sp-4);
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
         display: flex;
         flex-direction: column;
         gap: var(--sp-2);
     }
 
+    /* ── M3 Filled Tonal Button (Inline Add) ── */
     .add-btn-inline {
-        font-size: var(--text-xs);
-        color: var(--accent-text);
-        font-weight: 500;
-        padding: 4px 10px;
-        border-radius: var(--radius-sm);
-        background: var(--accent-subtle);
-        transition: var(--transition-fast);
+        font-size: var(--text-sm);
+        color: var(--accent-on-container);
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: var(--radius-full);
+        background: var(--accent-container);
+        transition: var(--transition-base);
         width: fit-content;
     }
 
     .add-btn-inline:hover {
-        background: var(--accent);
-        color: var(--text-on-accent);
+        box-shadow: var(--shadow-sm);
     }
 
+    /* ── Sidebar Footer ── */
     .sidebar-footer {
-        padding: var(--sp-3);
-        border-top: 1px solid var(--glass-border);
+        padding: var(--sp-3) var(--sp-4);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
     }
 
+    /* ── M3 Filled Tonal Button (Import) ── */
     .add-library-btn {
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: var(--sp-2);
-        padding: 7px var(--sp-3);
-        border-radius: var(--radius-md);
-        font-size: var(--text-sm);
-        font-weight: 500;
-        color: var(--accent-text);
-        border: 1px dashed var(--glass-border-strong);
-        background: transparent;
-        transition: var(--transition-fast);
+        padding: 10px var(--sp-4);
+        border-radius: var(--radius-full);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--accent-on-container);
+        background: var(--accent-container);
+        border: none;
+        transition: var(--transition-base);
     }
 
     .add-library-btn:hover {
-        background: var(--accent);
-        color: var(--text-on-accent);
-        border-color: var(--accent);
-        border-style: solid;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .add-library-btn:active {
+        transform: scale(0.98);
     }
 
     .add-icon {
@@ -566,7 +579,7 @@
     }
 
     .add-icon :global(svg) {
-        width: 15px;
-        height: 15px;
+        width: 18px;
+        height: 18px;
     }
 </style>

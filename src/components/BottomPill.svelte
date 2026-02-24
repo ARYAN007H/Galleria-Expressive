@@ -21,131 +21,167 @@
     ];
 </script>
 
-<nav class="bottom-pill" aria-label="Navigation">
-    <div class="pill-inner">
+<nav class="m3-nav-bar" aria-label="Navigation">
+    <div class="nav-bar-inner">
         {#each items as item (item.id)}
             <button
-                class="pill-item"
+                class="nav-bar-item"
                 class:active={$activeSection === item.id}
                 on:click={() => setSection(item.id)}
                 title={item.label}
             >
-                <span
-                    class="pill-icon"
-                    class:active-icon={$activeSection === item.id}
-                >
-                    {@html item.icon}
-                </span>
-                <span class="pill-label">{item.label}</span>
-                {#if item.id === "favorites" && $favoritesCount > 0}
-                    <span class="pill-badge">{$favoritesCount}</span>
-                {/if}
+                <div class="icon-container">
+                    <div
+                        class="active-pill"
+                        class:show={$activeSection === item.id}
+                    ></div>
+                    <span
+                        class="nav-bar-icon"
+                        class:active-icon={$activeSection === item.id}
+                    >
+                        {@html item.icon}
+                    </span>
+                    {#if item.id === "favorites" && $favoritesCount > 0}
+                        <span class="nav-badge">{$favoritesCount}</span>
+                    {/if}
+                </div>
+                <span class="nav-bar-label">{item.label}</span>
             </button>
         {/each}
     </div>
 </nav>
 
 <style>
-    .bottom-pill {
+    /* ── M3 Navigation Bar (Pixel-style) ── */
+    .m3-nav-bar {
         position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
+        bottom: 0;
+        left: 0;
+        right: 0;
         z-index: 900;
-        animation: pillSlideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        animation: navBarSlideUp var(--duration-emphasized)
+            var(--ease-emphasized-decel) both;
+        padding: 0 var(--sp-4);
+        padding-bottom: env(safe-area-inset-bottom, 0);
     }
 
-    @keyframes pillSlideUp {
+    @keyframes navBarSlideUp {
         from {
             opacity: 0;
-            transform: translateX(-50%) translateY(30px) scale(0.92);
+            transform: translateY(100%);
         }
         to {
             opacity: 1;
-            transform: translateX(-50%) translateY(0) scale(1);
+            transform: translateY(0);
         }
     }
 
-    .pill-inner {
+    .nav-bar-inner {
         display: flex;
         align-items: center;
-        gap: 2px;
-        padding: 6px 10px;
-        background: var(--glass-thick);
-        backdrop-filter: blur(40px) saturate(1.8);
-        -webkit-backdrop-filter: blur(40px) saturate(1.8);
-        border: 1px solid var(--glass-border-strong);
-        border-radius: 26px;
-        box-shadow:
-            var(--shadow-float),
-            inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+        justify-content: space-around;
+        height: var(--nav-bar-height);
+        max-width: 420px;
+        margin: 0 auto;
+        background: var(--md-sys-color-surface-container);
+        border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+        box-shadow: var(--shadow-lg);
+        padding: 0 var(--sp-2);
     }
 
-    .pill-item {
+    .nav-bar-item {
         position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 2px;
-        padding: 8px 18px;
-        border-radius: 20px;
-        color: var(--text-tertiary);
+        gap: 4px;
+        padding: 12px 0;
+        color: var(--text-secondary);
         cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+        transition: color var(--duration-base) var(--ease-emphasized);
         -webkit-tap-highlight-color: transparent;
         white-space: nowrap;
+        min-width: 64px;
     }
 
-    .pill-item:hover {
-        color: var(--text-secondary);
-        background: var(--accent-subtle);
+    .nav-bar-item.active {
+        color: var(--md-sys-color-on-secondary-container);
     }
 
-    .pill-item.active {
-        color: var(--accent);
-        background: var(--accent-subtle);
+    /* ── Animated Indicator Pill (Pixel signature) ── */
+    .icon-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 32px;
     }
 
-    .pill-icon {
+    .active-pill {
+        position: absolute;
+        inset: 0;
+        background: var(--md-sys-color-secondary-container);
+        border-radius: var(--radius-full);
+        transform: scaleX(0);
+        opacity: 0;
+        transition:
+            transform var(--duration-emphasized) var(--ease-emphasized),
+            opacity var(--duration-base) var(--ease-standard);
+    }
+
+    .active-pill.show {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    .nav-bar-icon {
         display: flex;
         align-items: center;
         justify-content: center;
         width: 24px;
         height: 24px;
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        z-index: 1;
+        transition: transform var(--duration-base) var(--ease-spring);
     }
 
-    .pill-icon :global(svg) {
-        width: 20px;
-        height: 20px;
+    .nav-bar-icon :global(svg) {
+        width: 22px;
+        height: 22px;
     }
 
-    .pill-item.active .pill-icon {
-        transform: scale(1.08);
+    .nav-bar-item.active .nav-bar-icon {
+        transform: scale(1.05);
     }
 
-    .pill-label {
-        font-size: 10px;
+    /* ── Label ── */
+    .nav-bar-label {
+        font-size: 12px;
         font-weight: 600;
         letter-spacing: 0.02em;
         line-height: 1;
+        position: relative;
+        z-index: 1;
     }
 
-    .pill-badge {
+    /* ── Badge ── */
+    .nav-badge {
         position: absolute;
-        top: 3px;
+        top: -2px;
         right: 10px;
-        min-width: 15px;
-        height: 15px;
+        min-width: 16px;
+        height: 16px;
         padding: 0 4px;
-        background: #ff2d55;
-        color: white;
-        font-size: 9px;
+        background: var(--md-sys-color-error);
+        color: var(--md-sys-color-on-error);
+        font-size: 10px;
         font-weight: 700;
         border-radius: var(--radius-full);
         display: flex;
         align-items: center;
         justify-content: center;
         line-height: 1;
+        z-index: 2;
     }
 </style>

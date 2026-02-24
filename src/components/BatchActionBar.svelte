@@ -158,6 +158,7 @@
 {/if}
 
 <style>
+    /* ── M3 Bottom Action Bar ── */
     .batch-bar {
         position: fixed;
         bottom: 24px;
@@ -166,12 +167,10 @@
         display: flex;
         align-items: center;
         gap: var(--sp-3);
-        padding: 10px 20px;
-        background: var(--glass-thick);
-        backdrop-filter: blur(30px) saturate(1.8);
-        -webkit-backdrop-filter: blur(30px) saturate(1.8);
-        border: 1px solid var(--glass-border-strong);
-        border-radius: var(--radius-xl);
+        padding: 10px 24px;
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--radius-full);
         box-shadow: var(--shadow-float);
         z-index: 1000;
         animation: slideInUp var(--duration-base) var(--ease-spring);
@@ -195,27 +194,29 @@
         gap: 4px;
     }
 
+    /* ── M3 Icon Button (Batch) ── */
     .batch-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 10px;
-        background: var(--bg-secondary);
+        padding: 8px 12px;
+        background: var(--md-sys-color-surface-container-highest);
         color: var(--text-primary);
-        border-radius: var(--radius-md);
-        font-size: var(--text-xs);
+        border-radius: var(--radius-full);
+        font-size: var(--text-sm);
         font-weight: 500;
         transition: var(--transition-fast);
-        gap: 4px;
+        gap: var(--sp-1);
     }
 
     .batch-btn :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .batch-btn:hover {
-        background: var(--bg-tertiary);
+        background: var(--accent-subtle);
+        color: var(--accent);
     }
 
     .batch-btn.danger:hover {
@@ -226,47 +227,46 @@
     .batch-divider {
         width: 1px;
         height: 20px;
-        background: var(--glass-border-strong);
+        background: var(--md-sys-color-outline-variant);
         margin: 0 4px;
     }
 
+    /* ── M3 Dropdown Menu ── */
     .dropdown {
         position: absolute;
         bottom: calc(100% + 8px);
         left: 50%;
         transform: translateX(-50%);
-        min-width: 200px;
-        max-height: 240px;
+        min-width: 220px;
+        max-height: 260px;
         overflow-y: auto;
-        background: var(--glass-ultra);
-        backdrop-filter: blur(40px) saturate(2);
-        -webkit-backdrop-filter: blur(40px) saturate(2);
-        border: 1px solid var(--glass-border-strong);
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--md-sys-color-outline-variant);
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-float);
-        padding: var(--sp-2);
+        padding: var(--sp-1);
         animation: fadeInScale var(--duration-fast) var(--ease-spring);
         transform-origin: bottom center;
     }
 
     .dropdown-title {
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-quaternary);
-        padding: 4px 8px 8px;
+        letter-spacing: var(--letter-prominent);
+        color: var(--text-tertiary);
+        padding: var(--sp-2) var(--sp-3) var(--sp-2);
     }
 
     .dropdown-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--sp-3);
         width: 100%;
-        padding: 7px 8px;
+        padding: 10px var(--sp-3);
         color: var(--text-primary);
-        font-size: var(--text-sm);
-        border-radius: var(--radius-sm);
+        font-size: var(--text-base);
+        border-radius: var(--radius-full);
         text-align: left;
         transition: var(--transition-fast);
     }
@@ -277,12 +277,12 @@
 
     .album-icon {
         display: flex;
-        color: var(--accent-text);
+        color: var(--accent);
     }
 
     .album-icon :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .tag-dot {
@@ -293,40 +293,40 @@
     }
 
     .album-count {
-        color: var(--text-quaternary);
-        font-size: 11px;
+        color: var(--text-tertiary);
+        font-size: var(--text-xs);
         margin-left: auto;
     }
 
     .dropdown-divider {
         height: 1px;
-        background: var(--glass-border);
-        margin: 4px 0;
+        background: var(--md-sys-color-outline-variant);
+        margin: var(--sp-1) 0;
     }
 
     .dropdown-empty {
-        padding: 12px 8px;
-        color: var(--text-quaternary);
-        font-size: var(--text-xs);
+        padding: var(--sp-4) var(--sp-3);
+        color: var(--text-tertiary);
+        font-size: var(--text-sm);
         text-align: center;
     }
 
     .new-album-form {
         display: flex;
-        gap: 4px;
-        padding-top: 4px;
+        gap: var(--sp-1);
+        padding: var(--sp-2) var(--sp-1);
     }
 
     .new-album-input {
         flex: 1;
-        padding: 6px 8px;
-        border: 1px solid var(--glass-border-strong);
-        border-radius: var(--radius-sm);
-        background: var(--bg-secondary);
+        padding: 8px var(--sp-3);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--radius-full);
+        background: var(--md-sys-color-surface-container);
         color: var(--text-primary);
-        font-size: var(--text-xs);
+        font-size: var(--text-sm);
         outline: none;
-        transition: border-color var(--duration-fast) var(--ease-out);
+        transition: border-color var(--duration-fast) var(--ease-standard);
     }
 
     .new-album-input:focus {
@@ -334,16 +334,16 @@
     }
 
     .new-album-btn {
-        padding: 6px 10px;
-        background: var(--accent);
-        color: white;
-        border-radius: var(--radius-sm);
+        padding: 8px 14px;
+        background: var(--accent-container);
+        color: var(--accent-on-container);
+        border-radius: var(--radius-full);
         font-size: var(--text-sm);
         font-weight: 600;
         transition: var(--transition-fast);
     }
 
     .new-album-btn:hover {
-        background: var(--accent-hover);
+        box-shadow: var(--shadow-sm);
     }
 </style>

@@ -563,39 +563,37 @@
 </div>
 
 <style>
+    /* ── M3 Settings Dialog ── */
     .settings-overlay {
         position: fixed;
         inset: 0;
         z-index: 1000;
-        background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
+        background: rgba(0, 0, 0, 0.5);
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: fadeIn var(--duration-fast) var(--ease-out);
+        animation: fadeIn var(--duration-fast) var(--ease-emphasized-decel);
     }
 
     .settings-panel {
-        width: min(680px, 92vw);
-        max-height: 80vh;
+        width: min(700px, 92vw);
+        max-height: 82vh;
         display: flex;
         border-radius: var(--radius-2xl);
-        background: var(--glass-ultra);
-        backdrop-filter: blur(40px) saturate(2);
-        -webkit-backdrop-filter: blur(40px) saturate(2);
-        border: 1px solid var(--glass-border-strong);
+        background: var(--md-sys-color-surface-container);
+        border: 1px solid var(--md-sys-color-outline-variant);
         box-shadow: var(--shadow-float);
         animation: fadeInScale var(--duration-base) var(--ease-spring);
         overflow: hidden;
     }
 
-    /* ── Sidebar Tabs ── */
+    /* ── Settings Sidebar ── */
     .settings-sidebar {
-        width: 180px;
+        width: 190px;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid var(--glass-border);
-        background: var(--bg-secondary);
+        border-right: 1px solid var(--md-sys-color-outline-variant);
+        background: var(--md-sys-color-surface-container-low);
         padding: var(--sp-4);
         flex-shrink: 0;
     }
@@ -604,7 +602,7 @@
         font-size: var(--text-lg);
         font-weight: 700;
         letter-spacing: var(--letter-tight);
-        padding: var(--sp-2) var(--sp-2) var(--sp-4);
+        padding: var(--sp-2) var(--sp-3) var(--sp-5);
     }
 
     .tab-nav {
@@ -617,13 +615,13 @@
     .tab-btn {
         display: flex;
         align-items: center;
-        gap: var(--sp-2);
-        padding: 7px var(--sp-3);
-        border-radius: var(--radius-md);
-        font-size: var(--text-sm);
-        font-weight: 450;
+        gap: var(--sp-3);
+        padding: 10px var(--sp-4);
+        border-radius: var(--radius-full);
+        font-size: var(--text-base);
+        font-weight: 500;
         color: var(--text-secondary);
-        transition: var(--transition-fast);
+        transition: var(--transition-base);
         text-align: left;
     }
 
@@ -632,8 +630,9 @@
     }
 
     .tab-btn.active {
-        background: var(--accent);
-        color: white;
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        font-weight: 600;
     }
 
     .tab-icon {
@@ -642,19 +641,19 @@
     }
 
     .tab-icon :global(svg) {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
     }
 
     .settings-sidebar-footer {
         padding-top: var(--sp-4);
-        border-top: 1px solid var(--glass-border);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .version {
         font-size: var(--text-xs);
-        color: var(--text-quaternary);
-        font-weight: 450;
+        color: var(--text-tertiary);
+        font-weight: 500;
     }
 
     /* ── Content Area ── */
@@ -669,18 +668,18 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--sp-4) var(--sp-5);
-        border-bottom: 1px solid var(--glass-border);
+        padding: var(--sp-4) var(--sp-6);
+        border-bottom: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .content-header h3 {
         font-size: var(--text-md);
-        font-weight: 600;
+        font-weight: 700;
     }
 
     .close-btn {
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -690,39 +689,39 @@
     }
 
     .close-btn :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .close-btn:hover {
-        background: var(--glass-border-strong);
+        background: var(--accent-subtle);
         color: var(--text-primary);
     }
 
     .content-body {
         flex: 1;
         overflow-y: auto;
-        padding: var(--sp-4) var(--sp-5);
+        padding: var(--sp-5) var(--sp-6);
     }
 
     .settings-group {
-        margin-bottom: var(--sp-6);
+        margin-bottom: var(--sp-8);
     }
 
     .group-title {
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-quaternary);
+        letter-spacing: var(--letter-prominent);
+        color: var(--text-tertiary);
         margin-bottom: var(--sp-3);
     }
 
     .group-desc {
-        font-size: var(--text-xs);
+        font-size: var(--text-sm);
         color: var(--text-tertiary);
-        margin-bottom: var(--sp-3);
-        line-height: 1.5;
+        margin-bottom: var(--sp-4);
+        line-height: 1.6;
     }
 
     .setting-row {
@@ -734,7 +733,7 @@
     }
 
     .setting-row + .setting-row {
-        border-top: 1px solid var(--glass-border);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .setting-info {
@@ -752,29 +751,29 @@
     }
 
     .setting-icon :global(svg) {
-        width: 17px;
-        height: 17px;
+        width: 18px;
+        height: 18px;
     }
 
     .setting-label {
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
         font-weight: 500;
         color: var(--text-primary);
     }
 
     .setting-desc {
-        font-size: var(--text-xs);
-        color: var(--text-quaternary);
-        margin-top: 1px;
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+        margin-top: 2px;
     }
 
-    /* ── Theme Toggle ── */
+    /* ── M3 Segmented Button (Theme Toggle) ── */
     .theme-toggle {
         display: flex;
-        gap: 2px;
-        background: var(--bg-secondary);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-md);
+        gap: 0;
+        background: var(--md-sys-color-surface-container-high);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--radius-full);
         padding: 2px;
     }
 
@@ -782,27 +781,27 @@
         display: flex;
         align-items: center;
         gap: var(--sp-1);
-        padding: 5px var(--sp-3);
-        border-radius: var(--radius-sm);
-        font-size: var(--text-xs);
+        padding: 6px var(--sp-4);
+        border-radius: var(--radius-full);
+        font-size: var(--text-sm);
         font-weight: 500;
         color: var(--text-tertiary);
-        transition: var(--transition-fast);
+        transition: var(--transition-base);
         white-space: nowrap;
     }
 
     .theme-option :global(svg) {
-        width: 13px;
-        height: 13px;
+        width: 14px;
+        height: 14px;
     }
 
     .theme-option.active {
-        background: var(--bg-primary);
-        color: var(--accent);
-        box-shadow: var(--shadow-xs);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+        font-weight: 600;
     }
 
-    /* ── Toggle Switch ── */
+    /* ── M3 Switch ── */
     .toggle-switch {
         position: relative;
         cursor: pointer;
@@ -818,35 +817,40 @@
 
     .toggle-track {
         display: block;
-        width: 42px;
-        height: 24px;
-        background: var(--bg-tertiary);
+        width: 52px;
+        height: 32px;
+        background: var(--md-sys-color-surface-container-highest);
+        border: 2px solid var(--md-sys-color-outline);
         border-radius: var(--radius-full);
-        transition: background var(--duration-fast) var(--ease-out);
+        transition: all var(--duration-base) var(--ease-emphasized);
         position: relative;
     }
 
     .toggle-switch input:checked + .toggle-track {
         background: var(--accent);
+        border-color: var(--accent);
     }
 
     .toggle-thumb {
         position: absolute;
-        top: 2px;
-        left: 2px;
+        top: 4px;
+        left: 4px;
         width: 20px;
         height: 20px;
-        background: white;
+        background: var(--md-sys-color-outline);
         border-radius: var(--radius-full);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-        transition: transform var(--duration-fast) var(--ease-spring);
+        transition: all var(--duration-base) var(--ease-emphasized);
     }
 
     .toggle-switch input:checked + .toggle-track .toggle-thumb {
-        transform: translateX(18px);
+        transform: translateX(20px);
+        width: 24px;
+        height: 24px;
+        top: 2px;
+        background: white;
     }
 
-    /* ── Density Slider ── */
+    /* ── M3 Slider ── */
     .density-control {
         display: flex;
         align-items: center;
@@ -856,9 +860,9 @@
     .density-slider {
         -webkit-appearance: none;
         appearance: none;
-        width: 80px;
-        height: 3px;
-        background: var(--bg-tertiary);
+        width: 90px;
+        height: 4px;
+        background: var(--md-sys-color-surface-container-highest);
         border-radius: var(--radius-full);
         outline: none;
         cursor: pointer;
@@ -867,24 +871,29 @@
     .density-slider::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
         background: var(--accent);
         cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-sm);
+        transition: transform var(--duration-fast) var(--ease-spring);
+    }
+
+    .density-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
     }
 
     .density-label {
-        font-size: var(--text-xs);
-        color: var(--text-quaternary);
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
         font-weight: 500;
         width: 20px;
         text-align: center;
         font-variant-numeric: tabular-nums;
     }
 
-    /* ── Accent Color Picker ── */
+    /* ── M3 Color Chips ── */
     .accent-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -895,16 +904,16 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         padding: var(--sp-3);
-        border-radius: var(--radius-md);
-        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        background: var(--md-sys-color-surface-container-high);
         border: 2px solid transparent;
-        transition: var(--transition-fast);
+        transition: var(--transition-base);
     }
 
     .accent-swatch:hover {
-        background: var(--bg-tertiary);
+        background: var(--md-sys-color-surface-container-highest);
     }
 
     .accent-swatch.active {
@@ -913,17 +922,17 @@
     }
 
     .swatch-circle {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-full);
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        box-shadow: var(--shadow-sm);
     }
 
     .swatch-label {
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 500;
         color: var(--text-tertiary);
     }
@@ -933,28 +942,28 @@
         font-weight: 600;
     }
 
-    /* ── Layout Cards ── */
+    /* ── M3 Layout Cards ── */
     .layout-cards {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: var(--sp-2);
+        gap: var(--sp-3);
     }
 
     .layout-card {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
-        padding: var(--sp-4) var(--sp-2);
-        border-radius: var(--radius-lg);
-        background: var(--bg-secondary);
+        gap: 6px;
+        padding: var(--sp-5) var(--sp-3);
+        border-radius: var(--radius-xl);
+        background: var(--md-sys-color-surface-container-high);
         border: 2px solid transparent;
-        transition: var(--transition-fast);
+        transition: var(--transition-base);
         text-align: center;
     }
 
     .layout-card:hover {
-        background: var(--bg-tertiary);
+        background: var(--md-sys-color-surface-container-highest);
     }
 
     .layout-card.active {
@@ -968,8 +977,8 @@
     }
 
     .layout-card-icon :global(svg) {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
     }
 
     .layout-card.active .layout-card-icon {
@@ -977,22 +986,22 @@
     }
 
     .layout-card-name {
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
         font-weight: 600;
         color: var(--text-primary);
     }
 
     .layout-card-desc {
-        font-size: 10px;
-        color: var(--text-quaternary);
-        line-height: 1.3;
+        font-size: 11px;
+        color: var(--text-tertiary);
+        line-height: 1.4;
     }
 
     /* ── Folder Management ── */
     .folder-management {
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 2px;
         max-height: 320px;
         overflow-y: auto;
     }
@@ -1000,34 +1009,34 @@
     .folder-row {
         display: flex;
         align-items: center;
-        gap: var(--sp-2);
-        padding: 6px var(--sp-2);
-        border-radius: var(--radius-sm);
+        gap: var(--sp-3);
+        padding: 8px var(--sp-3);
+        border-radius: var(--radius-full);
         transition: var(--transition-fast);
     }
 
     .folder-row:hover {
-        background: var(--bg-tertiary);
+        background: var(--accent-subtle);
     }
 
     .folder-row.hidden-folder {
-        opacity: 0.45;
+        opacity: 0.4;
     }
 
     .folder-icon {
         display: flex;
-        color: var(--text-tertiary);
+        color: var(--accent);
         flex-shrink: 0;
     }
 
     .folder-icon :global(svg) {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
     }
 
     .folder-name {
         flex: 1;
-        font-size: var(--text-sm);
+        font-size: var(--text-base);
         min-width: 0;
     }
 
@@ -1035,7 +1044,7 @@
         display: flex;
         gap: 2px;
         opacity: 0;
-        transition: opacity var(--duration-fast) var(--ease-out);
+        transition: opacity var(--duration-fast) var(--ease-standard);
     }
 
     .folder-row:hover .folder-actions {
@@ -1043,19 +1052,19 @@
     }
 
     .folder-action-btn {
-        width: 26px;
-        height: 26px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--radius-sm);
-        color: var(--text-quaternary);
+        border-radius: var(--radius-full);
+        color: var(--text-tertiary);
         transition: var(--transition-fast);
     }
 
     .folder-action-btn :global(svg) {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
     }
 
     .folder-action-btn:hover {
@@ -1076,10 +1085,10 @@
     }
 
     .empty-state-sm {
-        padding: var(--sp-4);
+        padding: var(--sp-6);
         text-align: center;
-        font-size: var(--text-sm);
-        color: var(--text-quaternary);
+        font-size: var(--text-base);
+        color: var(--text-tertiary);
     }
 
     /* ── Shortcuts ── */
@@ -1094,37 +1103,36 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--sp-3);
-        padding: 7px var(--sp-3);
-        border-radius: var(--radius-sm);
-        background: var(--bg-secondary);
-        border: 1px solid var(--glass-border);
+        padding: 10px var(--sp-4);
+        border-radius: var(--radius-lg);
+        background: var(--md-sys-color-surface-container-high);
     }
 
     .shortcut-keys {
         display: flex;
         align-items: center;
-        gap: 3px;
-        font-size: var(--text-xs);
+        gap: 4px;
+        font-size: var(--text-sm);
     }
 
     .shortcut-label {
-        font-size: var(--text-xs);
+        font-size: var(--text-sm);
         color: var(--text-tertiary);
-        font-weight: 450;
+        font-weight: 500;
     }
 
     kbd {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 5px;
-        background: var(--bg-tertiary);
-        border: 1px solid var(--glass-border-strong);
-        border-radius: var(--radius-xs);
+        min-width: 24px;
+        height: 24px;
+        padding: 0 6px;
+        background: var(--md-sys-color-surface-container-highest);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        border-radius: var(--radius-sm);
         font-family: var(--font-mono);
-        font-size: 10px;
+        font-size: 11px;
         color: var(--text-secondary);
     }
 </style>
