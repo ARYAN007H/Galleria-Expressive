@@ -286,6 +286,48 @@ impl Database {
         Ok(())
     }
 
+    /// Batch insert photos inside a single transaction — ~50x faster than individual inserts
+    pub fn batch_insert_photos(
+        &self,
+        library_id: i64,
+        photos: &[crate::scan::ScannedFile],
+    ) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute_batch("BEGIN")?;
+        {
+            let mut stmt = conn.prepare(
+                r#"INSERT OR REPLACE INTO photos (library_id, path, filename, folder_rel, taken_at, modified_at, media_type, size_bytes, width, height,
+                                                   camera_make, camera_model, lens, iso, shutter_speed, aperture, focal_length, gps_lat, gps_lon)
+                   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)"#,
+            )?;
+            for s in photos {
+                stmt.execute(rusqlite::params![
+                    library_id,
+                    s.path,
+                    s.filename,
+                    s.folder_rel,
+                    s.taken_at,
+                    s.modified_at,
+                    s.media_type,
+                    s.size_bytes,
+                    s.width,
+                    s.height,
+                    s.camera_make,
+                    s.camera_model,
+                    s.lens,
+                    s.iso,
+                    s.shutter_speed,
+                    s.aperture,
+                    s.focal_length,
+                    s.gps_lat,
+                    s.gps_lon,
+                ])?;
+            }
+        }
+        conn.execute_batch("COMMIT")?;
+        Ok(())
+    }
+
     /// Helper: standard columns for photo queries
     fn photo_select_cols() -> &'static str {
         "id, path, filename, folder_rel, taken_at, modified_at, media_type, size_bytes, width, height, is_favorite, is_deleted, deleted_at, camera_make, camera_model, lens, iso, shutter_speed, aperture, focal_length, gps_lat, gps_lon"
@@ -570,6 +612,35 @@ impl Database {
             [library_id],
             |row| row.get(0),
         )
+    }
+
+    /// Count photos across all libraries (non-deleted)
+    pub fn count_all_photos(&self, library_ids: &[i64]) -> SqlResult<i64> {
+        if library_ids.is_empty() {
+            return Ok(0);
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+        let sql = format!(
+            "SELECT COUNT(*) FROM photos WHERE library_id IN ({}) AND is_deleted = 0",
+            placeholders.join(", ")
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let params: Vec<Box<dyn rusqlite::ToSql>> = library_ids.iter().map(|id| Box::new(*id) as Box<dyn rusqlite::ToSql>).collect();
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        stmt.query_row(param_refs.as_slice(), |row| row.get(0))
+    }
+
+    /// Get all library root paths (for path validation / security)
+    pub fn get_library_root_paths(&self) -> SqlResult<Vec<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT root_path FROM library")?;
+        let mut rows = stmt.query([])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(row.get(0)?);
+        }
+        Ok(out)
     }
 
     // ── Favorites ──

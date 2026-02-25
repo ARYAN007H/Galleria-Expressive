@@ -16,7 +16,7 @@
         albums,
         loadAlbumPhotos,
         loadTagPhotos,
-        indexLibrary,
+        loadAllPhotos,
         showSettings,
     } from "../lib/store";
     import type { SidebarSection, Album, Tag } from "../lib/store";
@@ -35,6 +35,7 @@
     async function selectSection(id: SidebarSection) {
         activeSection.set(id);
         activeResourceId.set(null);
+        activeSource.set(null);
         filters.update((f) => ({
             ...f,
             selectedFolder: null,
@@ -43,7 +44,7 @@
         }));
 
         if (id === "all") {
-            await indexLibrary();
+            await loadAllPhotos();
         }
     }
 
@@ -322,8 +323,8 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid var(--md-sys-color-outline-variant);
-        background: var(--md-sys-color-surface-container-low);
+        border-right: 1px solid var(--md-sys-color-surface-container-highest);
+        background: var(--bg-app);
         flex-shrink: 0;
         overflow: hidden;
         animation: slideInLeft var(--duration-base) var(--ease-emphasized-decel);

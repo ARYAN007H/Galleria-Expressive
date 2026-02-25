@@ -20,6 +20,7 @@
     "get-index-progress",
     "get-current-library-path",
     "scan-default-directories",
+    "restore-session",
     "get-all-photos",
     "get-libraries",
     "add-library-path",

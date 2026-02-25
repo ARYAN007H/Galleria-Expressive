@@ -120,6 +120,11 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
     if let Some(state) = app.try_state::<AppState>() {
         *state.db.lock().unwrap() = Some(db);
         *state.library_root.lock().unwrap() = Some(root_str.clone());
+        // Add to library_roots if not already present
+        let mut roots = state.library_roots.lock().unwrap();
+        if !roots.iter().any(|(id, _)| *id == library_id) {
+            roots.push((library_id, root_str.clone()));
+        }
         eprintln!("✓ App state set: library_root = {}, library_id = {}, total photos = {}", root_str, library_id, total);
     }
 
@@ -243,6 +248,35 @@ pub fn setup_state(app: &tauri::AppHandle) {
         library_root: Mutex::new(None),
         library_roots: Mutex::new(Vec::new()),
     });
+}
+
+/// Restore session from persisted DB — no filesystem scanning, instant startup
+#[tauri::command]
+pub async fn restore_session(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::db::LibraryInfo>, String> {
+    let db_path = db_path(&app);
+    if !db_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let db = Database::new(&db_path).map_err(|e| e.to_string())?;
+    let libraries = db.get_all_libraries().map_err(|e| e.to_string())?;
+
+    if libraries.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Populate library_roots from DB
+    let roots: Vec<(i64, String)> = libraries.iter().map(|l| (l.id, l.root_path.clone())).collect();
+    if let Some(first) = roots.first() {
+        *state.library_root.lock().unwrap() = Some(first.1.clone());
+    }
+    *state.library_roots.lock().unwrap() = roots;
+    *state.db.lock().unwrap() = Some(db);
+
+    Ok(libraries)
 }
 
 /// Auto-scan default user directories for photos

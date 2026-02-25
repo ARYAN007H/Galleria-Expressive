@@ -162,3 +162,13 @@ commands.allow = ["remove_library_path"]
 identifier = "get-library-paths"
 description = "Get library paths"
 commands.allow = ["get_library_paths"]
+
+[[permission]]
+identifier = "restore-session"
+description = "Restore session"
+commands.allow = ["restore_session"]
+
+[[permission]]
+identifier = "save-edited-photo"
+description = "Save edited photo"
+commands.allow = ["save_edited_photo"]

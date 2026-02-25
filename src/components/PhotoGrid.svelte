@@ -3,23 +3,22 @@
 </script>
 
 <script lang="ts">
+    import { onMount, onDestroy } from "svelte";
     import {
         groupedPhotos,
         filteredPhotos,
         selectedPhoto,
-        getThumbnail,
         appSettings,
         updateSettings,
         isMultiSelectMode,
         selectedPhotoIds,
         togglePhotoSelection,
+        loadMorePhotos,
+        hasMorePhotos,
+        isLoadingMore,
     } from "../lib/store";
     import type { Photo } from "../lib/store";
     import { convertFileSrc } from "@tauri-apps/api/core";
-
-    // Thumbnail cache for performance
-    let thumbnailCache = new Map<string, string>();
-    let loadingSet = new Set<string>();
 
     $: columnCount = getColumnCount($appSettings.gridZoom);
 
@@ -59,26 +58,9 @@
         }
     }
 
-    async function loadThumbnail(photo: Photo): Promise<string> {
-        if (thumbnailCache.has(photo.path)) {
-            return thumbnailCache.get(photo.path)!;
-        }
-        if (loadingSet.has(photo.path)) return "";
-
-        loadingSet.add(photo.path);
-        try {
-            const thumbPath = await getThumbnail(photo.path);
-            if (thumbPath) {
-                const url = convertFileSrc(thumbPath);
-                thumbnailCache.set(photo.path, url);
-                loadingSet.delete(photo.path);
-                return url;
-            }
-        } catch (err) {
-            console.error("Thumbnail load error:", err);
-        }
-        loadingSet.delete(photo.path);
-        return "";
+    /** Direct file source — instant, no IPC thumbnail generation */
+    function getPhotoUrl(photo: Photo): string {
+        return convertFileSrc(photo.path);
     }
 
     function openPhoto(photo: Photo) {
@@ -107,6 +89,36 @@
                 updateSettings({ gridZoom: currentZoom - 1 });
             }
         }
+    }
+
+    // ── Infinite Scroll ──
+    let sentinel: HTMLDivElement;
+    let observer: IntersectionObserver;
+
+    onMount(() => {
+        observer = new IntersectionObserver(
+            (entries) => {
+                if (
+                    entries[0]?.isIntersecting &&
+                    $hasMorePhotos &&
+                    !$isLoadingMore
+                ) {
+                    loadMorePhotos();
+                }
+            },
+            { rootMargin: "600px" },
+        );
+        if (sentinel) observer.observe(sentinel);
+    });
+
+    onDestroy(() => {
+        observer?.disconnect();
+    });
+
+    // Re-observe whenever the sentinel element is recreated by Svelte
+    $: if (sentinel && observer) {
+        observer.disconnect();
+        observer.observe(sentinel);
     }
 
     // Expressive masonry: assign span classes based on aspect ratio
@@ -176,30 +188,24 @@
                         {/if}
 
                         <div class="photo-thumb">
-                            {#await loadThumbnail(photo)}
-                                <div class="placeholder">
-                                    <div class="placeholder-shimmer"></div>
-                                </div>
-                            {:then src}
-                                {#if src}
-                                    <img
-                                        {src}
-                                        alt={photo.filename}
-                                        loading="lazy"
-                                        draggable="false"
-                                    />
-                                {:else}
-                                    <div class="placeholder">
-                                        <span class="placeholder-icon"
-                                            >{@html icons.image || ""}</span
-                                        >
-                                    </div>
-                                {/if}
-                            {:catch}
-                                <div class="placeholder">
-                                    <span class="placeholder-icon">!</span>
-                                </div>
-                            {/await}
+                            <img
+                                src={getPhotoUrl(photo)}
+                                alt={photo.filename}
+                                loading="lazy"
+                                decoding="async"
+                                draggable="false"
+                                on:error={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    e.currentTarget.nextElementSibling?.classList.add(
+                                        "show",
+                                    );
+                                }}
+                            />
+                            <div class="placeholder fallback">
+                                <span class="placeholder-icon"
+                                    >{@html icons.image || ""}</span
+                                >
+                            </div>
                         </div>
 
                         {#if photo.mediaType === "video"}
@@ -233,6 +239,16 @@
             <p class="no-results-hint">
                 Try adjusting your filters or search query
             </p>
+        </div>
+    {/if}
+
+    <!-- Infinite-scroll sentinel -->
+    {#if $hasMorePhotos}
+        <div class="scroll-sentinel" bind:this={sentinel}>
+            {#if $isLoadingMore}
+                <div class="load-more-spinner"></div>
+                <span class="load-more-text">Loading more photos…</span>
+            {/if}
         </div>
     {/if}
 </div>
@@ -313,14 +329,14 @@
 
     /* ── Expressive Mode — M3 Masonry ── */
     .layout-expressive {
-        padding: var(--sp-2);
+        padding: 4px;
     }
 
     .layout-expressive .photo-grid {
-        gap: 4px;
+        gap: 3px;
         grid-auto-flow: dense;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        grid-auto-rows: 160px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        grid-auto-rows: 140px;
     }
 
     .layout-expressive .date-header {
@@ -328,15 +344,15 @@
     }
 
     .layout-expressive .date-section {
-        margin-bottom: 4px;
+        margin-bottom: 3px;
     }
 
     .layout-expressive .photo-card {
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-md);
     }
 
     .layout-expressive .photo-thumb img {
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-md);
         object-fit: cover;
         width: 100%;
         height: 100%;
@@ -344,6 +360,8 @@
 
     .layout-expressive .photo-card:hover {
         transform: scale(1.015);
+        border-radius: var(--radius-lg);
+        z-index: 10;
     }
 
     /* Masonry span classes */
@@ -419,6 +437,15 @@
         );
         background-size: 200% 100%;
         animation: shimmer 1.5s infinite;
+    }
+
+    /* Hidden fallback — shown via JS on:error */
+    .placeholder.fallback {
+        display: none;
+    }
+
+    .placeholder.fallback.show {
+        display: flex;
     }
 
     .placeholder-icon {
@@ -515,5 +542,30 @@
     .select-checkbox.checked {
         background: var(--accent);
         border-color: var(--accent);
+    }
+
+    /* ── Infinite Scroll Sentinel ── */
+    .scroll-sentinel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sp-3);
+        padding: var(--sp-8) 0;
+        min-height: 1px;
+    }
+
+    .load-more-spinner {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2.5px solid var(--md-sys-color-outline-variant);
+        border-top-color: var(--accent);
+        animation: spin 0.8s linear infinite;
+    }
+
+    .load-more-text {
+        font-size: var(--text-sm);
+        color: var(--text-tertiary);
+        font-weight: 500;
     }
 </style>

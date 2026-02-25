@@ -1,8 +1,6 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
     import { fade } from "svelte/transition";
     import type { Photo } from "../lib/store";
-    import { getThumbnail } from "../lib/store";
     import { icons } from "../lib/icons";
     import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -10,35 +8,10 @@
     export let selected: boolean = false;
     export let size: number = 200;
 
-    let src: string = "";
-    let visible = false;
-    let imgElement: HTMLDivElement;
-    let observer: IntersectionObserver;
+    $: src = convertFileSrc(photo.path);
 
-    onMount(() => {
-        observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                visible = true;
-                loadThumbnail();
-                observer.disconnect();
-            }
-        });
-
-        if (imgElement) {
-            observer.observe(imgElement);
-        }
-    });
-
-    onDestroy(() => {
-        if (observer) observer.disconnect();
-    });
-
-    async function loadThumbnail() {
-        const rawPath = await getThumbnail(photo.path);
-        if (rawPath) {
-            src = convertFileSrc(rawPath);
-        }
-    }
+    let loaded = false;
+    let errored = false;
 
     function formatDuration(seconds: number): string {
         const m = Math.floor(seconds / 60);
@@ -54,13 +27,22 @@
     class:selected
     on:click
     on:dblclick
-    bind:this={imgElement}
     role="button"
     tabindex="0"
 >
-    {#if visible && src}
-        <img {src} alt={photo.filename} loading="lazy" class="thumb-img" />
-    {:else}
+    {#if src}
+        <img
+            {src}
+            alt={photo.filename}
+            loading="lazy"
+            decoding="async"
+            class="thumb-img"
+            on:load={() => (loaded = true)}
+            on:error={() => (errored = true)}
+            class:loaded
+        />
+    {/if}
+    {#if !loaded}
         <div class="placeholder"></div>
     {/if}
 

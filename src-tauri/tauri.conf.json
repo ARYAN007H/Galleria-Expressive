@@ -23,7 +23,10 @@
             "assetProtocol": {
                 "enable": true,
                 "scope": [
-                    "**"
+                    "**",
+                    "$APP_CACHE_DIR/**",
+                    "$APP_DATA_DIR/**",
+                    "$HOME/**"
                 ]
             },
             "capabilities": [

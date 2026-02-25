@@ -177,10 +177,10 @@
         align-items: center;
         gap: var(--sp-3);
         padding: 0 var(--sp-4);
-        border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        border-bottom: 1px solid var(--md-sys-color-surface-container-highest);
         flex-shrink: 0;
         z-index: 100;
-        background: var(--md-sys-color-surface-container);
+        background: var(--bg-app);
         user-select: none;
         -webkit-app-region: drag;
     }
@@ -303,7 +303,7 @@
     }
 
     .m3-icon-btn::before {
-        content: '';
+        content: "";
         position: absolute;
         inset: 0;
         border-radius: inherit;

@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store'
 import { invoke } from '@tauri-apps/api/core'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { open, message } from '@tauri-apps/plugin-dialog'
 
 // ── Types ──
@@ -154,6 +155,9 @@ export const photos = writable<Photo[]>([])
 export const searchQuery = writable<string>('')
 export const selectedPhoto = writable<Photo | null>(null)
 export const isIndexing = writable<boolean>(false)
+export const hasMorePhotos = writable<boolean>(true)
+export const isLoadingMore = writable<boolean>(false)
+const PAGE_SIZE = 500
 export const indexProgress = writable<{
     current: number
     total: number
@@ -409,10 +413,21 @@ export async function indexLibrary() {
 
         await invoke<any>('select_and_index', { path })
 
-        const allPhotos = await invoke<Photo[]>('get_photos', {
-            params: { limit: 10000, offset: 0 }
-        })
-        photos.set(allPhotos || [])
+        // Reload everything from DB
+        await loadAllPhotos()
+
+        // Refresh source directories
+        try {
+            const libs = await invoke<any[]>('get_libraries')
+            if (libs) {
+                sourceDirectories.set(libs.map((l: any) => ({
+                    id: l.id,
+                    name: l.rootPath?.split('/').pop() || l.root_path?.split('/').pop() || 'Library',
+                    rootPath: l.rootPath || l.root_path,
+                    photoCount: l.photoCount || l.photo_count || 0
+                })))
+            }
+        } catch { /* ignore */ }
     } catch (err) {
         console.error('Failed to index library:', err)
         await message(String(err), { title: 'Indexing Error', kind: 'error' })
@@ -430,6 +445,11 @@ export async function getThumbnail(photoPath: string): Promise<string> {
     }
 }
 
+/** Instant photo source — uses Tauri asset protocol to serve the original file directly */
+export function getPhotoSrc(photo: Photo): string {
+    return convertFileSrc(photo.path)
+}
+
 export async function searchPhotos(query: string) {
     searchQuery.set(query)
 }
@@ -438,43 +458,35 @@ export async function searchPhotos(query: string) {
 
 export async function initAutoScan() {
     try {
-        isIndexing.set(true)
-        indexProgress.set({ current: 0, total: 0, phase: 'scanning' })
+        // Restore session from persisted DB — initializes Rust AppState.db + library_roots
+        // This is instant: no filesystem scanning, just opens the SQLite file
+        const libraries = await invoke<any[]>('restore_session').catch(() => [])
 
-        const result = await invoke<{ sources: Array<{ name: string; path: string; libraryId: number; photoCount: number; skipped: boolean }> }>(
-            'scan_default_directories'
-        )
-
-        if (result?.sources) {
-            // Also refresh sources
-            const libs = await invoke<any[]>('get_libraries')
-            sourceDirectories.set((libs || []).map(l => ({
+        if (libraries && libraries.length > 0) {
+            sourceDirectories.set(libraries.map((l: any) => ({
                 id: l.id,
-                name: l.root_path?.split('/').pop() || l.path?.split('/').pop() || 'Library',
-                rootPath: l.root_path || l.path,
-                photoCount: 0
+                name: l.name || l.rootPath?.split('/').pop() || l.root_path?.split('/').pop() || 'Library',
+                rootPath: l.rootPath || l.root_path,
+                photoCount: l.photoCount || l.photo_count || 0
             })))
-            if (libs && libs.length > 0) {
-                libraryPath.set(libs[0].root_path || libs[0].path)
-            }
+            libraryPath.set(libraries[0].rootPath || libraries[0].root_path)
+            await loadAllPhotos()
+            return
         }
 
-        // Load all photos from all sources
-        await loadAllPhotos()
+        // NO libraries in DB — show EmptyState, let user import
     } catch (err) {
-        console.error('Failed to auto-scan directories:', err)
-    } finally {
-        isIndexing.set(false)
-        indexProgress.set({ current: 0, total: 0, phase: 'done' })
+        console.error('Failed to initialize:', err)
     }
 }
 
 export async function loadAllPhotos() {
     try {
-        const allPhotos = await invoke<Photo[]>('get_all_photos', {
-            params: { limit: 50000, offset: 0 }
+        const firstPage = await invoke<Photo[]>('get_all_photos', {
+            params: { limit: PAGE_SIZE, offset: 0 }
         })
-        photos.set(allPhotos || [])
+        photos.set(firstPage || [])
+        hasMorePhotos.set((firstPage || []).length >= PAGE_SIZE)
 
         // Refresh source directory counts
         try {
@@ -483,6 +495,27 @@ export async function loadAllPhotos() {
         } catch { /* ignore */ }
     } catch (err) {
         console.error('Failed to load photos:', err)
+    }
+}
+
+export async function loadMorePhotos() {
+    if (get(isLoadingMore) || !get(hasMorePhotos)) return
+    isLoadingMore.set(true)
+    try {
+        const currentCount = get(photos).length
+        const nextPage = await invoke<Photo[]>('get_all_photos', {
+            params: { limit: PAGE_SIZE, offset: currentCount }
+        })
+        if (!nextPage || nextPage.length === 0) {
+            hasMorePhotos.set(false)
+        } else {
+            photos.update(list => [...list, ...nextPage])
+            hasMorePhotos.set(nextPage.length >= PAGE_SIZE)
+        }
+    } catch (err) {
+        console.error('Failed to load more photos:', err)
+    } finally {
+        isLoadingMore.set(false)
     }
 }
 

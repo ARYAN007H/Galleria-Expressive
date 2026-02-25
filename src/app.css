@@ -98,15 +98,24 @@
     --font-mono: "Google Sans Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
 
     /* M3 Type Scale */
-    --text-xs: 0.6875rem;     /* 11px — label-small */
-    --text-sm: 0.75rem;       /* 12px — body-small */
-    --text-base: 0.875rem;    /* 14px — body-medium */
-    --text-md: 1rem;          /* 16px — body-large / title-medium */
-    --text-lg: 1.125rem;      /* 18px — title-large */
-    --text-xl: 1.375rem;      /* 22px — headline-small */
-    --text-2xl: 1.75rem;      /* 28px — headline-medium */
-    --text-3xl: 2.25rem;      /* 36px — headline-large */
-    --text-display: 2.8125rem; /* 45px — display-small */
+    --text-xs: 0.6875rem;
+    /* 11px — label-small */
+    --text-sm: 0.75rem;
+    /* 12px — body-small */
+    --text-base: 0.875rem;
+    /* 14px — body-medium */
+    --text-md: 1rem;
+    /* 16px — body-large / title-medium */
+    --text-lg: 1.125rem;
+    /* 18px — title-large */
+    --text-xl: 1.375rem;
+    /* 22px — headline-small */
+    --text-2xl: 1.75rem;
+    /* 28px — headline-medium */
+    --text-3xl: 2.25rem;
+    /* 36px — headline-large */
+    --text-display: 2.8125rem;
+    /* 45px — display-small */
 
     --letter-tight: -0.015em;
     --letter-normal: 0em;
@@ -118,10 +127,14 @@
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
-    --radius-xl: 20px;       /* M3 medium container */
-    --radius-2xl: 28px;       /* M3 large — expressive cards */
-    --radius-3xl: 32px;       /* M3 extra-large */
-    --radius-full: 9999px;    /* Pill shapes */
+    --radius-xl: 20px;
+    /* M3 medium container */
+    --radius-2xl: 28px;
+    /* M3 large — expressive cards */
+    --radius-3xl: 32px;
+    /* M3 extra-large */
+    --radius-full: 9999px;
+    /* Pill shapes */
 
     /* ── M3 Elevation (Tonal + shadow) ── */
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -187,21 +200,21 @@
     --md-sys-color-on-error: #FFFFFF;
     --md-sys-color-error-container: #FFDAD6;
 
-    --md-sys-color-surface: #F9F9FF;
-    --md-sys-color-on-surface: #191C20;
-    --md-sys-color-on-surface-variant: #44474F;
-    --md-sys-color-surface-dim: #D9D9E0;
-    --md-sys-color-surface-bright: #F9F9FF;
+    --md-sys-color-surface: #FFFFFF;
+    --md-sys-color-on-surface: #1F1F1F;
+    --md-sys-color-on-surface-variant: #444746;
+    --md-sys-color-surface-dim: #DCDCDC;
+    --md-sys-color-surface-bright: #FFFFFF;
     --md-sys-color-surface-container-lowest: #FFFFFF;
-    --md-sys-color-surface-container-low: #F3F3FA;
-    --md-sys-color-surface-container: #EDEDF4;
-    --md-sys-color-surface-container-high: #E7E8EE;
-    --md-sys-color-surface-container-highest: #E1E2E9;
+    --md-sys-color-surface-container-low: #F8F9FA;
+    --md-sys-color-surface-container: #F1F3F4;
+    --md-sys-color-surface-container-high: #E8EAED;
+    --md-sys-color-surface-container-highest: #E3E3E3;
 
-    --md-sys-color-outline: #74777F;
-    --md-sys-color-outline-variant: #C4C6D0;
-    --md-sys-color-inverse-surface: #2E3036;
-    --md-sys-color-inverse-on-surface: #F0F0F7;
+    --md-sys-color-outline: #747775;
+    --md-sys-color-outline-variant: #C4C7C5;
+    --md-sys-color-inverse-surface: #303030;
+    --md-sys-color-inverse-on-surface: #F2F2F2;
     --md-sys-color-inverse-primary: #A8C7FA;
 
     /* Re-derive semantic aliases */
@@ -384,8 +397,13 @@ a {
    M3 Keyframe Animations
    ══════════════════════════════════════════ */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fadeInScale {
@@ -393,6 +411,7 @@ a {
         opacity: 0;
         transform: scale(0.92);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -404,6 +423,7 @@ a {
         opacity: 0;
         transform: translateY(12px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -415,6 +435,7 @@ a {
         opacity: 0;
         transform: translateX(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -426,6 +447,7 @@ a {
         opacity: 0;
         transform: translateX(20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -437,6 +459,7 @@ a {
         opacity: 0;
         transform: translateY(24px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -444,22 +467,43 @@ a {
 }
 
 @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
 }
 
 @keyframes breathe {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.03);
+    }
 }
 
 /* M3 Ripple effect */
@@ -468,6 +512,7 @@ a {
         transform: scale(0);
         opacity: 0.12;
     }
+
     to {
         transform: scale(2.5);
         opacity: 0;
@@ -480,6 +525,7 @@ a {
         transform: scaleX(0.6);
         opacity: 0;
     }
+
     to {
         transform: scaleX(1);
         opacity: 1;

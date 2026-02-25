@@ -2343,6 +2343,18 @@
           "markdownDescription": "Restore photos"
         },
         {
+          "description": "Restore session",
+          "type": "string",
+          "const": "restore-session",
+          "markdownDescription": "Restore session"
+        },
+        {
+          "description": "Save edited photo",
+          "type": "string",
+          "const": "save-edited-photo",
+          "markdownDescription": "Save edited photo"
+        },
+        {
           "description": "Scan default directories",
           "type": "string",
           "const": "scan-default-directories",
