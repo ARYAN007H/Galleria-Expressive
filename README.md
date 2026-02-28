@@ -1,104 +1,69 @@
-# Photo Sorter — Premium Linux Gallery
-
-> A high-performance, offline-first Linux gallery app built with Tauri + Svelte + Rust.
-> Featuring an Apple-inspired Liquid Glass UI and blazing fast performance.
-
----
-
-## 📅 Project Timeline & Status
-
-| Date | Milestone | Status |
-| :--- | :--- | :--- |
-| **Feb 9, 2026** | **Migration Complete** (React 19 → Svelte 4) | ✅ Done |
-| **Feb 11, 2026** | **Vision Document Created** (`vision.md`) | ✅ Done |
-| **Current** | **Phase 1: UI Overhaul** (Liquid Glass Design) | 🚧 In Progress |
-
-> **Note:** See `vision.md` for the detailed long-term roadmap and architectural vision.
+<div align="center">
+  <h1>📸 Galleria Expressive</h1>
+  <p><b>A student-built, Material 3 Expressive desktop gallery app.</b></p>
+  <p><i>Fast, offline-first, and beautifully designed.</i></p>
+</div>
 
 ---
 
-## 🛠️ Tech Stack
+## 🌟 The Story
 
-- **Frontend:** Svelte 4.2 + TypeScript + Vite 7
-- **Backend:** Tauri 2.0 + Rust
-- **Database:** SQLite (embedded)
-- **Styling:** CSS Variables + "Liquid Glass" Design System
-- **Performance:** 30KB JS bundle, 120fps target
+*"The main focus of this project was to learn, as I am a student."*
 
----
+**Galleria Expressive** is a passion project born out of curiosity. It serves as a hands-on technical playground combining a **Tauri (Rust)** backend for native system performance with a **Svelte 4** frontend for blazing-fast reactivity. 
 
-## ✨ Features
+Aesthetically, the app is a deep dive into Google's **Material Design 3 (M3) Expressive UI**, aiming to prove that local Linux desktop apps can be just as gorgeous, fluid, and cinematic as modern web experiences.
 
-- **Offline-First:** All processing happens locally on your machine.
-- **Recursive Indexing:** Scans folders deeply and extracts EXIF metadata.
-- **Smart Filtering:** Filter by Year, Month, Folder, and Media Type.
-- **Instant Search:** Debounced (280ms) search across filenames and paths.
-- **Liquid Glass UI:** Premium glassmorphism, micro-interactions, and smooth animations.
-- **Dark Mode:** Automatic system preference detection.
+> **🤖 Built with AI, Driven by a Human:** While AI assists heavily in generating the code, the true value of this project is the education it provides me. I am acting as the software architect—learning how frontends and backends communicate, how reactivity models work, and how complex UI/UX designs are translated into actual CSS and state logic.
 
 ---
 
-## 🚀 Build & Run
+## ✨ Features & Design
+
+- 🎨 **M3 Expressive UI:** Imbued with 5 dynamic, tonal color palettes (Lavender, Mauve, Sage, Coral, Ocean) that beautifully tint the application's surface in both True Dark and Light modes.
+- 🧩 **Tetris-Style Mosaic Grid:** An immersive, expressive viewing mode where photos of varying aspect ratios tessellate perfectly together like puzzle pieces, featuring cinematic hover effects.
+- ⚡ **Offline-First & Fast:** Powered by a Rust backend and embedded SQLite, it recursively indexes your folders to extract EXIF data without ever pinging a cloud server.
+- 📁 **Albums & Collections:** Fully featured intuitive album management to group your best shots.
+- 🔍 **Smart Filtering:** Find exactly what you need by filtering by Year, Month, Folder, or Media Type.
+
+---
+
+## 🛠️ Tech Stack: The Learning Ground
+
+- **Frontend:** Svelte 4.2 + TypeScript + Vite 7 (Migrated from React 19 to learn fine-grained reactivity and reduce bundle size by 83%).
+- **Backend:** Tauri 2.0 + Rust (Learning memory safety and system-level file operations).
+- **Storage:** Embedded SQLite.
+- **Styling:** Custom CSS Variables built on M3 design principles (Tailwind PostCSS).
+
+---
+
+## 🚀 Getting Started
+
+If you want to poke around the code or run the latest alpha build locally:
 
 ### Prerequisites
 - Node.js 18+
 - Rust & Cargo
 - Tauri CLI (`cargo install tauri-cli`)
 
-### Development
+### Run in Development
 ```bash
-# Install dependencies
+# Install the frontend dependencies
 npm install
 
-# Run with hot reload (Frontend + Backend)
+# Fire up both the Vite dev server and the Rust backend
 npm run tauri:dev
 ```
 
-### Production Build
+### Build for Production
 ```bash
-# Build optimized Linux binary
+# Compile to a highly optimized Linux binary
 npm run tauri:build
-# Output: src-tauri/target/release/photo-sorter
-```
-
-### Troubleshooting
-- **"Module not found"**: Run `rm -rf node_modules package-lock.json && npm install`.
-- **Port in use**: Vite will automatically try the next available port.
-- **Slow loading**: Large libraries (10k+ photos) may take a minute to index initially.
-
----
-
-## 📂 Project Structure
-
-```
-photo-sorter/
-├── src/                    # Svelte Frontend
-│   ├── components/         # UI Components (Sidebar, Grid, etc.)
-│   ├── lib/store.ts        # State Management (Svelte Stores)
-│   ├── app.css             # Liquid Glass Design System
-│   ├── App.svelte          # Root Layout
-│   └── main.ts             # Entry Point
-├── src-tauri/              # Rust Backend
-│   ├── src/
-│   │   ├── commands.rs     # IPC Commands
-│   │   ├── db.rs           # SQLite Database
-│   │   ├── scan.rs         # File Scanning & EXIF
-│   │   └── thumb.rs        # Thumbnail Generation
-│   └── Cargo.toml          # Rust Dependencies
-├── vision.md               # Long-term Project Vision & Roadmap
-└── README.md               # You are here
+# Find your executable in: src-tauri/target/release/galleria-expressive
 ```
 
 ---
 
-## 🔄 Migration History (React → Svelte)
+## 📚 Vision & Roadmap
 
-**Completed Feb 9, 2026**
-
-We migrated the entire frontend from React 19 to Svelte 4 to achieve our performance goals.
-
-**Key results:**
-- **Bundle Size:** Reduced by **83%** (180KB → 30KB).
-- **Render Speed:** **3x faster** initial render (220ms vs 680ms).
-- **Memory:** **30% less** usage during grid scrolling.
-- **Architecture:** Switched from React Hooks to Svelte Stores for fine-grained reactivity.
+Curious about the philosophy behind the code? Check out [vision.md](./vision.md) to read about the journey, the aesthetic choices, and what I plan to learn next.

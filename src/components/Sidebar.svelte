@@ -1,586 +1,338 @@
 <script lang="ts">
-    import { icons } from "../lib/icons";
     import {
         activeSection,
-        folders,
-        visibleFolders,
+        selectedPhoto,
         filters,
-        selectLibrary,
-        photoCount,
-        photos,
-        sourceDirectories,
-        activeSource,
-        favoritesCount,
-        activeResourceId,
-        tags,
-        albums,
-        loadAlbumPhotos,
-        loadTagPhotos,
         loadAllPhotos,
         showSettings,
+        appSettings,
+        toggleTheme,
     } from "../lib/store";
-    import type { SidebarSection, Album, Tag } from "../lib/store";
+    import * as Icons from "lucide-svelte";
 
-    let expandedFolders = true;
-    let expandedAlbums = true;
-    let expandedTags = true;
-
-    const sections: { id: SidebarSection; icon: string; label: string }[] = [
-        { id: "all", icon: icons.photos, label: "All Photos" },
-        { id: "recents", icon: icons.clock, label: "Recents" },
-        { id: "favorites", icon: icons.heart, label: "Favorites" },
-        { id: "videos", icon: icons.video, label: "Videos" },
+    // Mapped navigation items to Lucide icons
+    const navItems = [
+        { path: "all", icon: Icons.Image, label: "Photos" },
+        { path: "albums", icon: Icons.FolderOpen, label: "Albums" },
+        { path: "favorites", icon: Icons.Heart, label: "Favorites" },
+        { path: "trash", icon: Icons.Trash2, label: "Trash" },
     ];
 
-    async function selectSection(id: SidebarSection) {
-        activeSection.set(id);
-        activeResourceId.set(null);
-        activeSource.set(null);
-        filters.update((f) => ({
-            ...f,
-            selectedFolder: null,
-            selectedYear: null,
-            selectedMonth: null,
-        }));
+    $: isDarkMode = $appSettings.theme === "dark";
 
+    async function selectSection(id: string) {
         if (id === "all") {
+            activeSection.set("all");
+            filters.update((f) => ({ ...f, selectedFolder: null }));
             await loadAllPhotos();
+        } else if (id === "albums") {
+            activeSection.set("albums" as any);
+        } else if (id === "favorites") {
+            activeSection.set("favorites");
+            filters.update((f) => ({ ...f, selectedFolder: null }));
+        } else if (id === "videos") {
+            activeSection.set("videos");
+        } else if (id === "trash") {
+            activeSection.set("trash");
+            filters.update((f) => ({ ...f, selectedFolder: null }));
+        } else {
+            activeSection.set(id as any);
         }
-    }
-
-    function selectFolder(folder: string) {
-        activeSection.set("all");
-        activeSource.set(null);
-        filters.update((f) => ({
-            ...f,
-            selectedFolder: f.selectedFolder === folder ? null : folder,
-        }));
-        activeResourceId.set(null);
-    }
-
-    function selectSource(sourceName: string) {
-        activeSection.set("source");
-        activeSource.set(sourceName);
-        filters.update((f) => ({
-            ...f,
-            selectedFolder: null,
-            selectedYear: null,
-            selectedMonth: null,
-        }));
-    }
-
-    async function selectAlbum(album: Album) {
-        activeSection.set("album");
-        activeResourceId.set(album.id);
-        activeSource.set(null);
-        filters.update((f) => ({
-            ...f,
-            selectedFolder: null,
-            selectedYear: null,
-            selectedMonth: null,
-        }));
-        photos.set([]);
-        await loadAlbumPhotos(album.id);
-    }
-
-    async function selectTag(tag: Tag) {
-        activeSection.set("tag");
-        activeResourceId.set(tag.id);
-        activeSource.set(null);
-        filters.update((f) => ({
-            ...f,
-            selectedFolder: null,
-            selectedYear: null,
-            selectedMonth: null,
-        }));
-        photos.set([]);
-        await loadTagPhotos(tag.name);
-    }
-
-    $: videoCount = $photos.filter((p) => p.mediaType === "video").length;
-
-    function getSectionCount(id: SidebarSection): string {
-        switch (id) {
-            case "all":
-                return $photoCount.toLocaleString();
-            case "favorites":
-                return $favoritesCount > 0
-                    ? $favoritesCount.toLocaleString()
-                    : "";
-            case "videos":
-                return videoCount.toLocaleString();
-            default:
-                return "";
-        }
+        selectedPhoto.set(null);
     }
 </script>
 
 <aside class="sidebar">
     <div class="sidebar-inner">
-        <!-- Smart Collections -->
-        <div class="sidebar-section">
-            <h3 class="section-title">Library</h3>
-            <nav class="nav-list">
-                {#each sections as section}
-                    <button
-                        class="nav-item"
-                        class:active={$activeSection === section.id &&
-                            !$filters.selectedFolder}
-                        on:click={() => selectSection(section.id)}
-                    >
-                        <span class="nav-icon">{@html section.icon}</span>
-                        <span class="nav-label">{section.label}</span>
-                        {#if getSectionCount(section.id)}
-                            <span class="nav-count"
-                                >{getSectionCount(section.id)}</span
-                            >
-                        {/if}
-                        {#if $activeSection === section.id && !$filters.selectedFolder}
-                            <div class="active-indicator"></div>
-                        {/if}
-                    </button>
-                {/each}
-            </nav>
-        </div>
-
-        <!-- Sources -->
-        <div class="sidebar-section">
-            <div class="section-header">
-                <h3 class="section-title">Sources</h3>
-                <button
-                    class="section-action-btn"
-                    on:click={() => showSettings.set(true)}
-                    title="Manage Sources"
-                >
-                    {@html icons.settings}
-                </button>
-            </div>
-            {#if $sourceDirectories.length > 0}
-                <nav class="nav-list">
-                    {#each $sourceDirectories as source}
-                        <button
-                            class="nav-item"
-                            class:active={$activeSection === "source" &&
-                                $activeSource === source.name}
-                            on:click={() => selectSource(source.name)}
-                        >
-                            <span class="nav-icon source-icon"
-                                >{@html icons.folder}</span
-                            >
-                            <span class="nav-label truncate">{source.name}</span
-                            >
-                            {#if source.photoCount}
-                                <span class="nav-count"
-                                    >{source.photoCount}</span
-                                >
-                            {/if}
-                        </button>
-                    {/each}
-                </nav>
-            {:else}
-                <div class="empty-hint">
-                    <p>No folders added yet</p>
-                    <button
-                        class="add-btn-inline"
-                        on:click={() => showSettings.set(true)}
-                        >+ Add Folder</button
-                    >
-                </div>
-            {/if}
-        </div>
-
-        <!-- Folders -->
-        {#if $folders.length > 0}
-            <div class="sidebar-section">
-                <button
-                    class="section-title-btn"
-                    on:click={() => (expandedFolders = !expandedFolders)}
-                >
-                    <h3 class="section-title">Folders</h3>
-                    <span class="chevron" class:expanded={expandedFolders}>
-                        {@html icons.chevronDown}
-                    </span>
-                </button>
-
-                {#if expandedFolders}
-                    <nav class="nav-list folder-list">
-                        {#each $visibleFolders as folder}
-                            <button
-                                class="nav-item folder-item"
-                                class:active={$filters.selectedFolder ===
-                                    folder}
-                                on:click={() => selectFolder(folder)}
-                                title={folder}
-                            >
-                                <span class="nav-icon source-icon"
-                                    >{@html icons.folder}</span
-                                >
-                                <span class="nav-label truncate"
-                                    >{folder.split("/").pop() || folder}</span
-                                >
-                            </button>
-                        {/each}
-                        {#if $folders.length > $visibleFolders.length}
-                            <button
-                                class="nav-item manage-link"
-                                on:click={() => showSettings.set(true)}
-                            >
-                                <span class="nav-label"
-                                    >+{$folders.length - $visibleFolders.length}
-                                    more — Manage…</span
-                                >
-                            </button>
-                        {/if}
-                    </nav>
-                {/if}
-            </div>
-        {/if}
-
-        <!-- Albums -->
-        <div class="sidebar-section">
-            <button
-                class="section-title-btn"
-                on:click={() => (expandedAlbums = !expandedAlbums)}
-            >
-                <h3 class="section-title">Albums</h3>
-                <span class="chevron" class:expanded={expandedAlbums}>
-                    {@html icons.chevronDown}
-                </span>
-            </button>
-
-            {#if expandedAlbums}
-                <nav class="nav-list">
-                    {#each $albums as album}
-                        <button
-                            class="nav-item"
-                            class:active={$activeSection === "album" &&
-                                $activeResourceId === album.id}
-                            on:click={() => selectAlbum(album)}
-                        >
-                            <span class="nav-icon source-icon"
-                                >{@html icons.album}</span
-                            >
-                            <span class="nav-label truncate">{album.name}</span>
-                            <span class="nav-count">{album.photoCount}</span>
-                        </button>
-                    {/each}
-                    {#if $albums.length === 0}
-                        <div class="empty-hint">No albums yet</div>
-                    {/if}
-                </nav>
-            {/if}
-        </div>
-
-        <!-- Tags -->
-        <div class="sidebar-section">
-            <button
-                class="section-title-btn"
-                on:click={() => (expandedTags = !expandedTags)}
-            >
-                <h3 class="section-title">Tags</h3>
-                <span class="chevron" class:expanded={expandedTags}>
-                    {@html icons.chevronDown}
-                </span>
-            </button>
-
-            {#if expandedTags}
-                <nav class="nav-list">
-                    {#each $tags as tag}
-                        <button
-                            class="nav-item"
-                            class:active={$activeSection === "tag" &&
-                                $activeResourceId === tag.id}
-                            on:click={() => selectTag(tag)}
-                        >
-                            <span
-                                class="tag-dot"
-                                style="background: {tag.color}"
-                            ></span>
-                            <span class="nav-label truncate">{tag.name}</span>
-                        </button>
-                    {/each}
-                    {#if $tags.length === 0}
-                        <div class="empty-hint">No tags yet</div>
-                    {/if}
-                </nav>
-            {/if}
-        </div>
-    </div>
-
-    <!-- Bottom Action -->
-    <div class="sidebar-footer">
-        <button class="add-library-btn" on:click={selectLibrary}>
-            <span class="add-icon">{@html icons.plus}</span>
-            <span>Import Folder</span>
+        <!-- Add Photos Button -->
+        <button
+            on:click={() => {
+                /* TODO: Hook up upload flow */
+            }}
+            class="add-photos-btn"
+        >
+            <Icons.Plus class="w-5 h-5" />
+            <span>Add Photos</span>
         </button>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            {#each navItems as item}
+                {@const active =
+                    $activeSection === item.path && !$filters.selectedFolder}
+                <button
+                    on:click={() => selectSection(item.path)}
+                    class="nav-item"
+                    class:active
+                >
+                    <div class="nav-icon-wrap">
+                        <div class="nav-active-bg" class:show={active}></div>
+                        <svelte:component
+                            this={item.icon}
+                            class="w-5 h-5 nav-icon-svg"
+                        />
+                    </div>
+                    <span class="nav-label">{item.label}</span>
+                </button>
+            {/each}
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+
+        <!-- Bottom actions -->
+        <div class="sidebar-footer">
+            <button on:click={() => showSettings.set(true)} class="nav-item">
+                <div class="nav-icon-wrap">
+                    <Icons.Settings class="w-5 h-5 nav-icon-svg" />
+                </div>
+                <span class="nav-label">Settings</span>
+            </button>
+
+            <!-- Dark Mode Toggle -->
+            <button on:click={toggleTheme} class="theme-toggle-btn">
+                {#if isDarkMode}
+                    <Icons.Sun class="w-5 h-5" />
+                {:else}
+                    <Icons.Moon class="w-5 h-5" />
+                {/if}
+            </button>
+        </div>
     </div>
 </aside>
 
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+        {#each navItems as item}
+            {@const active =
+                $activeSection === item.path && !$filters.selectedFolder}
+            <button
+                on:click={() => selectSection(item.path)}
+                class="mobile-nav-item"
+                class:active
+            >
+                <svelte:component this={item.icon} class="w-6 h-6" />
+                <span class="mobile-nav-label">{item.label}</span>
+            </button>
+        {/each}
+    </div>
+</nav>
+
 <style>
-    /* ── M3 Navigation Drawer ── */
+    /* ── M3 Sidebar ── */
     .sidebar {
+        display: none;
         width: var(--sidebar-width);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        border-right: 1px solid var(--md-sys-color-surface-container-highest);
-        background: var(--bg-app);
         flex-shrink: 0;
-        overflow: hidden;
-        animation: slideInLeft var(--duration-base) var(--ease-emphasized-decel);
-        user-select: none;
+        height: 100%;
+        background: var(--md-sys-color-surface-container-low);
+        border-right: 1px solid var(--md-sys-color-outline-variant);
+        transition: background var(--duration-base) var(--ease-standard);
+    }
+
+    @media (min-width: 768px) {
+        .sidebar {
+            display: flex;
+        }
     }
 
     .sidebar-inner {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-3);
+        padding: var(--sp-4);
         overflow-y: auto;
-        overflow-x: hidden;
-        padding: var(--sp-3);
     }
 
-    .sidebar-section {
-        margin-bottom: var(--sp-6);
+    .sidebar-inner::-webkit-scrollbar {
+        display: none;
     }
 
-    .section-header {
+    /* ── Add Photos CTA ── */
+    .add-photos-btn {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding-right: var(--sp-1);
-    }
-
-    .section-title {
-        font-size: 11px;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-6);
+        border-radius: var(--radius-full);
+        background: var(--accent);
+        color: var(--text-on-accent);
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: var(--letter-prominent);
-        color: var(--text-tertiary);
-        padding: var(--sp-2) var(--sp-3);
-        margin-bottom: 2px;
+        font-size: var(--text-base);
+        box-shadow: var(--shadow-md);
+        transition: var(--transition-base);
+        flex-shrink: 0;
     }
 
-    .section-action-btn {
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--radius-full);
-        color: var(--text-tertiary);
-        transition: var(--transition-fast);
-        opacity: 0;
+    .add-photos-btn:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-1px);
     }
 
-    .section-action-btn :global(svg) {
-        width: 14px;
-        height: 14px;
+    .add-photos-btn:active {
+        transform: translateY(0) scale(0.98);
     }
 
-    .sidebar-section:hover .section-action-btn {
-        opacity: 1;
+    .add-photos-btn :global(svg) {
+        width: 20px;
+        height: 20px;
     }
 
-    .section-action-btn:hover {
-        color: var(--text-primary);
-        background: var(--accent-subtle);
-    }
-
-    .section-title-btn {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: var(--sp-2) var(--sp-3);
-        margin-bottom: 2px;
-        border-radius: var(--radius-full);
-        transition: var(--transition-fast);
-    }
-
-    .section-title-btn:hover {
-        background: var(--accent-subtle);
-    }
-
-    .chevron {
-        display: flex;
-        color: var(--text-tertiary);
-        transition: transform var(--duration-base) var(--ease-emphasized);
-    }
-
-    .chevron :global(svg) {
-        width: 14px;
-        height: 14px;
-    }
-
-    .chevron.expanded {
-        transform: rotate(0deg);
-    }
-
-    .chevron:not(.expanded) {
-        transform: rotate(-90deg);
-    }
-
-    .nav-list {
+    /* ── Navigation Items ── */
+    .sidebar-nav {
         display: flex;
         flex-direction: column;
         gap: 2px;
     }
 
-    /* ── M3 Nav Item with Indicator Pill ── */
     .nav-item {
         display: flex;
         align-items: center;
         gap: var(--sp-3);
-        padding: 10px var(--sp-4);
+        padding: var(--sp-2) var(--sp-4);
         border-radius: var(--radius-full);
-        color: var(--text-primary);
-        font-size: var(--text-base);
         font-weight: 500;
-        transition: var(--transition-base);
-        min-height: 40px;
+        font-size: var(--text-base);
+        color: var(--text-secondary);
+        transition: var(--transition-fast);
+        white-space: nowrap;
+        overflow: hidden;
         position: relative;
     }
 
     .nav-item:hover {
         background: var(--accent-subtle);
+        color: var(--text-primary);
     }
 
     .nav-item.active {
-        background: var(--md-sys-color-secondary-container);
         color: var(--md-sys-color-on-secondary-container);
         font-weight: 600;
     }
 
-    .nav-item.active .nav-icon {
-        color: var(--md-sys-color-on-secondary-container);
-    }
-
-    .nav-item.active .nav-count {
-        color: var(--md-sys-color-on-secondary-container);
-        opacity: 0.7;
-    }
-
-    .active-indicator {
-        display: none; /* Handled via background color in M3 style */
-    }
-
-    .nav-icon {
+    .nav-icon-wrap {
+        position: relative;
         display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
         flex-shrink: 0;
-        color: var(--text-secondary);
-        transition: color var(--duration-fast) var(--ease-standard);
     }
 
-    .nav-icon :global(svg) {
+    .nav-active-bg {
+        position: absolute;
+        inset: -2px -8px;
+        background: var(--md-sys-color-secondary-container);
+        border-radius: var(--radius-full);
+        transform: scaleX(0);
+        opacity: 0;
+        transition:
+            transform 0.3s var(--ease-emphasized),
+            opacity 0.2s var(--ease-standard);
+    }
+
+    .nav-active-bg.show {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    .nav-icon-wrap :global(svg) {
+        position: relative;
+        z-index: 1;
+    }
+
+    .nav-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ── Spacer & Footer ── */
+    .sidebar-spacer {
+        flex: 1;
+    }
+
+    .sidebar-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+
+    .theme-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-full);
+        background: var(--md-sys-color-surface-container-high);
+        color: var(--text-secondary);
+        transition: var(--transition-fast);
+        margin-top: var(--sp-1);
+    }
+
+    .theme-toggle-btn:hover {
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--text-primary);
+    }
+
+    .theme-toggle-btn :global(svg) {
         width: 20px;
         height: 20px;
     }
 
-    .source-icon {
-        color: var(--accent-text);
+    /* ── Mobile Bottom Nav ── */
+    .mobile-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--md-sys-color-surface-container);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+        z-index: 40;
     }
 
-    .nav-item.active .source-icon {
-        color: var(--md-sys-color-on-secondary-container);
+    @media (max-width: 767px) {
+        .mobile-nav {
+            display: block;
+        }
     }
 
-    .tag-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        margin-left: var(--sp-1);
+    .mobile-nav-inner {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: var(--sp-2) var(--sp-4) var(--sp-3);
     }
 
-    .nav-label {
-        flex: 1;
-        text-align: left;
-    }
-
-    .nav-count {
-        font-size: var(--text-xs);
-        color: var(--text-tertiary);
-        font-weight: 500;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .folder-list {
-        max-height: 220px;
-        overflow-y: auto;
-        padding-right: var(--sp-1);
-    }
-
-    .manage-link {
-        font-size: var(--text-sm);
-        color: var(--accent-text);
-        font-weight: 500;
-    }
-
-    .manage-link:hover {
-        background: var(--accent-subtle);
-    }
-
-    .empty-hint {
-        padding: var(--sp-3) var(--sp-4);
-        font-size: var(--text-sm);
-        color: var(--text-tertiary);
+    .mobile-nav-item {
         display: flex;
         flex-direction: column;
-        gap: var(--sp-2);
-    }
-
-    /* ── M3 Filled Tonal Button (Inline Add) ── */
-    .add-btn-inline {
-        font-size: var(--text-sm);
-        color: var(--accent-on-container);
-        font-weight: 600;
-        padding: 6px 16px;
-        border-radius: var(--radius-full);
-        background: var(--accent-container);
-        transition: var(--transition-base);
-        width: fit-content;
-    }
-
-    .add-btn-inline:hover {
-        box-shadow: var(--shadow-sm);
-    }
-
-    /* ── Sidebar Footer ── */
-    .sidebar-footer {
-        padding: var(--sp-3) var(--sp-4);
-        border-top: 1px solid var(--md-sys-color-outline-variant);
-    }
-
-    /* ── M3 Filled Tonal Button (Import) ── */
-    .add-library-btn {
-        width: 100%;
-        display: flex;
         align-items: center;
-        justify-content: center;
-        gap: var(--sp-2);
-        padding: 10px var(--sp-4);
-        border-radius: var(--radius-full);
-        font-size: var(--text-base);
+        gap: 2px;
+        padding: var(--sp-2);
+        border-radius: var(--radius-xl);
+        color: var(--text-secondary);
+        transition: color var(--duration-fast) var(--ease-standard);
+    }
+
+    .mobile-nav-item.active {
+        color: var(--accent);
+    }
+
+    .mobile-nav-item :global(svg) {
+        width: 24px;
+        height: 24px;
+    }
+
+    .mobile-nav-label {
+        font-size: 11px;
         font-weight: 600;
-        color: var(--accent-on-container);
-        background: var(--accent-container);
-        border: none;
-        transition: var(--transition-base);
-    }
-
-    .add-library-btn:hover {
-        box-shadow: var(--shadow-sm);
-    }
-
-    .add-library-btn:active {
-        transform: scale(0.98);
-    }
-
-    .add-icon {
-        display: flex;
-    }
-
-    .add-icon :global(svg) {
-        width: 18px;
-        height: 18px;
+        letter-spacing: 0.02em;
     }
 </style>

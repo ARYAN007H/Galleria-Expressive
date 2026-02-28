@@ -15,9 +15,13 @@
 
     const items: PillItem[] = [
         { id: "all", label: "Library", icon: icons.photos },
+        {
+            id: "albums" as SidebarSection,
+            label: "Albums",
+            icon: icons.folder || icons.photos,
+        },
         { id: "favorites", label: "Favorites", icon: icons.heart },
         { id: "recents", label: "Recents", icon: icons.clock },
-        { id: "videos", label: "Videos", icon: icons.video },
     ];
 
     // Hide pill when detail view is open

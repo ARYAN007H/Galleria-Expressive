@@ -18,7 +18,7 @@
         createAlbum,
     } from "../lib/store";
     import type { Photo, Tag, Album } from "../lib/store";
-    import { convertFileSrc } from "@tauri-apps/api/core";
+    import { convertFileSource } from "../lib/store";
     import { showEditor } from "../lib/store";
 
     let imageSrc = "";
@@ -86,7 +86,7 @@
         imageLoading = true;
         try {
             // Load the full resolution image directly using its absolute path
-            imageSrc = convertFileSrc(photo.path);
+            imageSrc = convertFileSource(photo.path);
         } catch (err) {
             console.error("Failed to load image:", err);
         }
@@ -99,7 +99,7 @@
         try {
             const thumbPath = await getThumbnail(photo.path);
             if (thumbPath) {
-                const url = convertFileSrc(thumbPath);
+                const url = convertFileSource(thumbPath);
                 thumbnailCache.set(photo.path, url);
                 return url;
             }

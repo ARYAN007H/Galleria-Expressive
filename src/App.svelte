@@ -10,6 +10,7 @@
         loadTags,
         loadAlbums,
         toggleMultiSelect,
+        activeSection,
     } from "./lib/store";
     import Toolbar from "./components/Toolbar.svelte";
     import Sidebar from "./components/Sidebar.svelte";
@@ -20,7 +21,10 @@
     import BottomPill from "./components/BottomPill.svelte";
     import BatchActionBar from "./components/BatchActionBar.svelte";
     import PhotoEditor from "./components/PhotoEditor.svelte";
+    import AlbumView from "./components/AlbumView.svelte";
     import { photos, libraryPath } from "./lib/store";
+
+    $: isDarkMode = $appSettings.theme === "dark";
 
     onMount(() => {
         console.log("App mounted");
@@ -68,12 +72,7 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div
-    class="app-shell"
-    class:sidebar-visible={showSidebar}
-    class:layout-expressive={isExpressive}
-    class:layout-compact={$appSettings.layoutMode === "compact"}
->
+<div class="app-shell" class:dark={isDarkMode}>
     <Toolbar />
 
     <div class="app-body">
@@ -81,8 +80,14 @@
             <Sidebar />
         {/if}
 
-        <main class="main-content" class:has-pill={isExpressive}>
-            {#if !$libraryPath}
+        <main
+            class="app-main"
+            class:has-pill={isExpressive}
+            class:expressive-main={isExpressive}
+        >
+            {#if $activeSection === "albums"}
+                <AlbumView />
+            {:else if !$libraryPath}
                 <EmptyState />
             {:else if $isIndexing}
                 <div class="indexing-state">
@@ -101,6 +106,7 @@
     </div>
 
     {#if isExpressive}
+        <!-- Keep BottomPill but we might need to change its styling to match the new mobile nav -->
         <BottomPill />
     {/if}
 
@@ -120,32 +126,57 @@
 </div>
 
 <style>
+    /* ── M3 App Shell ── */
     .app-shell {
-        width: 100%;
-        height: 100%;
+        height: 100vh;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
         background: var(--bg-app);
+        color: var(--text-primary);
+        transition: background var(--duration-base) var(--ease-standard);
     }
 
     .app-body {
         flex: 1;
+        min-height: 0; /* allow flex children to shrink & scroll */
+        width: 100%;
         display: flex;
-        overflow: hidden;
+        gap: var(--sp-3);
+        padding: var(--sp-3);
+        padding-bottom: 80px; /* space for mobile nav */
     }
 
-    .main-content {
+    @media (min-width: 768px) {
+        .app-body {
+            gap: var(--sp-4);
+            padding: var(--sp-2) var(--sp-4);
+            padding-bottom: var(--sp-2);
+        }
+    }
+
+    .app-main {
         flex: 1;
+        min-height: 0; /* critical: allows flex children to scroll */
         overflow: hidden;
+        background: var(--md-sys-color-surface-container-low);
+        border-radius: var(--radius-2xl);
+        border: 1px solid var(--md-sys-color-outline-variant);
+        box-shadow: var(--shadow-md);
         display: flex;
         flex-direction: column;
+        position: relative;
+        transition:
+            background var(--duration-base) var(--ease-standard),
+            box-shadow var(--duration-base) var(--ease-standard);
     }
 
-    .main-content.has-pill {
-        /* Remove padding to let the grid scroll under the pill, 
-           making it a true floating island */
-        padding-bottom: 0px;
+    /* Expressive mode: edge-to-edge immersive */
+    .app-main.expressive-main {
+        border: none;
+        border-radius: var(--radius-lg);
+        box-shadow: none;
+        background: var(--bg-app);
     }
 
     /* ── M3 Indexing State ── */

@@ -1,9 +1,12 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { icons } from "../lib/icons";
-    import { selectedPhoto, showInfoPanel } from "../lib/store";
-    import { convertFileSrc } from "@tauri-apps/api/core";
-    import { invoke } from "@tauri-apps/api/core";
+    import {
+        selectedPhoto,
+        showInfoPanel,
+        convertFileSource,
+        invokeCommand,
+    } from "../lib/store";
     import {
         type AdjustmentValues,
         type CropState,
@@ -17,7 +20,6 @@
         renderStrokes,
         canvasToBase64,
     } from "../lib/imageProcessing";
-    import { getThumbnail } from "../lib/store";
 
     export let onClose: () => void;
 
@@ -76,10 +78,6 @@
     onMount(async () => {
         if (!$selectedPhoto) return;
 
-        // Load full-res image
-        const thumbPath = await getThumbnail($selectedPhoto.path);
-        if (!thumbPath) return;
-
         sourceImg = new Image();
         sourceImg.crossOrigin = "anonymous";
         sourceImg.onload = () => {
@@ -101,7 +99,21 @@
             imageLoaded = true;
             renderPreview();
         };
-        sourceImg.src = convertFileSrc(thumbPath);
+        sourceImg.onerror = () => {
+            console.error("Failed to load image for editor");
+            imageLoaded = true; // stop spinner, will show empty canvas
+        };
+
+        // Load directly — no IPC thumbnail generation needed
+        sourceImg.src = convertFileSource($selectedPhoto.path);
+
+        // Safety timeout: if image doesn't load in 10s, stop spinner
+        setTimeout(() => {
+            if (!imageLoaded) {
+                console.warn("Editor image load timed out");
+                imageLoaded = true;
+            }
+        }, 10000);
     });
 
     function renderPreview() {
@@ -243,7 +255,7 @@
             const ext = originalPath.split(".").pop() || "jpg";
             const baseName = originalPath.replace(`.${ext}`, "");
             const savePath = `${baseName}_edited.${ext}`;
-            await invoke("save_edited_photo", {
+            await invokeCommand("save_edited_photo", {
                 imageData: data,
                 targetPath: savePath,
             });

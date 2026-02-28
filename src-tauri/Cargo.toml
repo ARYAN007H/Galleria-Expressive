@@ -1,5 +1,5 @@
 [package]
-name = "ifoto"
+name = "galleria_expressive"
 version = "0.1.0"
 description = "Photo and media viewer with Liquid Glass UI"
 authors = ["you"]
@@ -7,7 +7,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [lib]
-name = "ifoto"
+name = "galleria_expressive"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

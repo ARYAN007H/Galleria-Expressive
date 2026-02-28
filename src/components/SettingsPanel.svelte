@@ -136,7 +136,7 @@
                 {/each}
             </nav>
             <div class="settings-sidebar-footer">
-                <span class="version">ifoto v1.0.0</span>
+                <span class="version">Galleria Expressive v0.1.0</span>
             </div>
         </div>
 

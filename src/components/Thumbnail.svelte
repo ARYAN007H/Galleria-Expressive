@@ -2,13 +2,13 @@
     import { fade } from "svelte/transition";
     import type { Photo } from "../lib/store";
     import { icons } from "../lib/icons";
-    import { convertFileSrc } from "@tauri-apps/api/core";
+    import { convertFileSource } from "../lib/store";
 
     export let photo: Photo;
     export let selected: boolean = false;
     export let size: number = 200;
 
-    $: src = convertFileSrc(photo.path);
+    $: src = convertFileSource(photo.path);
 
     let loaded = false;
     let errored = false;

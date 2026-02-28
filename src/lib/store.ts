@@ -1,7 +1,26 @@
 import { writable, derived, get } from 'svelte/store'
-import { invoke } from '@tauri-apps/api/core'
-import { convertFileSrc } from '@tauri-apps/api/core'
-import { open, message } from '@tauri-apps/plugin-dialog'
+import { isTauri, mockInvoke, mockConvertFileSrc, mockOpen, mockMessage } from './tauriMock'
+
+// Conditional Tauri API — use real APIs in Tauri, mocks in browser
+let invoke: <T>(cmd: string, args?: any) => Promise<T>
+let convertFileSrc: (path: string) => string
+let open: (options?: any) => Promise<string | string[] | null>
+let message: (msg: string, options?: any) => Promise<void>
+
+if (isTauri) {
+    // Dynamic import for Tauri runtime
+    const tauriCore = await import('@tauri-apps/api/core')
+    const tauriDialog = await import('@tauri-apps/plugin-dialog')
+    invoke = tauriCore.invoke
+    convertFileSrc = tauriCore.convertFileSrc
+    open = tauriDialog.open as any
+    message = tauriDialog.message as any
+} else {
+    invoke = mockInvoke
+    convertFileSrc = mockConvertFileSrc
+    open = mockOpen as any
+    message = mockMessage
+}
 
 // ── Types ──
 
@@ -50,7 +69,7 @@ export type ViewMode = 'grid' | 'list'
 export type Theme = 'light' | 'dark'
 export type LayoutMode = 'compact' | 'default' | 'expressive'
 export type SortBy = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
-export type SidebarSection = 'all' | 'recents' | 'favorites' | 'videos' | 'source' | 'trash' | 'album' | 'tag'
+export type SidebarSection = 'all' | 'recents' | 'favorites' | 'videos' | 'source' | 'trash' | 'album' | 'albums' | 'tag'
 export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal' | 'indigo'
 export type ColorPalette = 'default' | 'lavender' | 'mauve' | 'sage' | 'coral' | 'ocean'
 
@@ -476,6 +495,16 @@ export async function getThumbnail(photoPath: string): Promise<string> {
 /** Instant photo source — uses Tauri asset protocol to serve the original file directly */
 export function getPhotoSrc(photo: Photo): string {
     return convertFileSrc(photo.path)
+}
+
+/** Re-exported convertFileSrc for components that need direct path conversion */
+export function convertFileSource(path: string): string {
+    return convertFileSrc(path)
+}
+
+/** Re-exported invoke for components that need direct command access */
+export async function invokeCommand<T>(cmd: string, args?: any): Promise<T> {
+    return invoke<T>(cmd, args)
 }
 
 export async function searchPhotos(query: string) {

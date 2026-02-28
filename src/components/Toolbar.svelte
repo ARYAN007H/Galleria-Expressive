@@ -170,17 +170,13 @@
 </header>
 
 <style>
-    /* ── M3 Top App Bar ── */
     .toolbar {
-        height: var(--toolbar-height);
         display: flex;
         align-items: center;
         gap: var(--sp-3);
-        padding: 0 var(--sp-4);
-        border-bottom: 1px solid var(--md-sys-color-surface-container-highest);
+        padding: var(--sp-2) var(--sp-4);
         flex-shrink: 0;
         z-index: 100;
-        background: var(--bg-app);
         user-select: none;
         -webkit-app-region: drag;
     }

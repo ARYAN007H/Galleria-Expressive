@@ -10,7 +10,7 @@
       {@html icons.camera}
     </div>
 
-    <h1 class="title">Welcome to ifoto</h1>
+    <h1 class="title">Welcome to Galleria Expressive</h1>
     <p class="subtitle">
       Your premium gallery experience starts here.<br />
       Import a folder to begin organizing your photos.
