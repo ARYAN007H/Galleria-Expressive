@@ -1094,6 +1094,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "galleria_expressive"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "image",
+ "rayon",
+ "rexif",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-shell",
+ "tokio",
+ "walkdir",
+]
+
+[[package]]
 name = "gdk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,27 +1715,6 @@ checksum = "3acae9609540aa318d1bc588455225fb2085b9ed0c4f6bd0d9d5bcd86f1a0344"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
-]
-
-[[package]]
-name = "ifoto"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "image",
- "rayon",
- "rexif",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-shell",
- "tokio",
- "walkdir",
 ]
 
 [[package]]

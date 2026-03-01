@@ -7,6 +7,7 @@
         showSettings,
         appSettings,
         toggleTheme,
+        selectLibrary,
     } from "../lib/store";
     import * as Icons from "lucide-svelte";
 
@@ -45,12 +46,7 @@
 <aside class="sidebar">
     <div class="sidebar-inner">
         <!-- Add Photos Button -->
-        <button
-            on:click={() => {
-                /* TODO: Hook up upload flow */
-            }}
-            class="add-photos-btn"
-        >
+        <button on:click={selectLibrary} class="add-photos-btn">
             <Icons.Plus class="w-5 h-5" />
             <span>Add Photos</span>
         </button>
