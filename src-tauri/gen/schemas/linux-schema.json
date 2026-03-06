@@ -2199,6 +2199,12 @@
           "markdownDescription": "Add to album"
         },
         {
+          "description": "Compute histogram",
+          "type": "string",
+          "const": "compute-histogram",
+          "markdownDescription": "Compute histogram"
+        },
+        {
           "description": "Create album",
           "type": "string",
           "const": "create-album",
@@ -2317,6 +2323,12 @@
           "type": "string",
           "const": "hard-delete-photos",
           "markdownDescription": "Hard delete photos"
+        },
+        {
+          "description": "Process image",
+          "type": "string",
+          "const": "process-image",
+          "markdownDescription": "Process image"
         },
         {
           "description": "Remove from album",

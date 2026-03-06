@@ -177,3 +177,13 @@ commands.allow = ["save_edited_photo"]
 identifier = "get-photo-count"
 description = "Get total photo count"
 commands.allow = ["get_photo_count"]
+
+[[permission]]
+identifier = "process-image"
+description = "Process image"
+commands.allow = ["process_image"]
+
+[[permission]]
+identifier = "compute-histogram"
+description = "Compute histogram"
+commands.allow = ["compute_histogram"]

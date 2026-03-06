@@ -6,6 +6,9 @@ import svelteConfig from "./svelte.config.js";
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
     plugins: [svelte(svelteConfig)],
+    build: {
+        target: 'esnext',
+    },
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //
