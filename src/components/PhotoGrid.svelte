@@ -238,7 +238,9 @@
                     if (!img) continue;
 
                     if (entry.isIntersecting) {
-                        if (!img.src || img.src === "") {
+                        // Use getAttribute to correctly detect truly unset src
+                        const currentSrc = img.getAttribute('src');
+                        if (!currentSrc) {
                             const photo = cardPhotoMap.get(card);
                             if (photo) {
                                 getPhotoUrl(photo).then((url) => {
@@ -256,19 +258,27 @@
                             rect.top - (entry.rootBounds?.bottom || vh),
                             (entry.rootBounds?.top || 0) - rect.bottom,
                         );
-                        if (dist > vh * 4 && img.src) {
+                        if (dist > vh * 4 && img.getAttribute('src')) {
                             img.removeAttribute("src");
                             card.classList.remove("img-loaded");
                         }
                     }
                 }
             },
-            { root: scrollContainer, rootMargin: "150% 0px 150% 0px" },
+            { root: scrollContainer, rootMargin: "200% 0px 200% 0px" },
         );
     }
 
     function lazyLoad(node: HTMLElement, photo: Photo) {
         cardPhotoMap.set(node, photo);
+
+        // Eagerly set src from cache if available (no async wait needed)
+        const cached = getCachedThumb(photo.path);
+        if (cached) {
+            const img = node.querySelector("img.lazy-photo") as HTMLImageElement;
+            if (img) img.src = cached;
+        }
+
         if (lazyObserver) lazyObserver.observe(node);
 
         return {

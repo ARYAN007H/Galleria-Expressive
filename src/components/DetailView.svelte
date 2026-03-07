@@ -110,7 +110,10 @@
                 return url;
             }
         } catch {}
-        return "";
+        // Fallback: serve the original file via asset protocol
+        const fallbackUrl = convertFileSource(photo.path);
+        thumbnailCache.set(photo.path, fallbackUrl);
+        return fallbackUrl;
     }
 
     function navigate(direction: "prev" | "next") {

@@ -49,6 +49,33 @@
     // Undo
     let undoStack: AdjustmentState[] = [];
 
+    // Resizable sidebar
+    let sidebarWidth = 340;
+    let isResizing = false;
+    const MIN_SIDEBAR = 280;
+    const MAX_SIDEBAR = 500;
+
+    function startResize(e: MouseEvent) {
+        e.preventDefault();
+        isResizing = true;
+        const startX = e.clientX;
+        const startWidth = sidebarWidth;
+
+        function onMove(ev: MouseEvent) {
+            const delta = startX - ev.clientX;
+            sidebarWidth = Math.max(MIN_SIDEBAR, Math.min(MAX_SIDEBAR, startWidth + delta));
+        }
+
+        function onUp() {
+            isResizing = false;
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        }
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+    }
+
     onMount(async () => {
         if (!$selectedPhoto) return;
 
@@ -70,17 +97,34 @@
             originalImageData = sctx.getImageData(0, 0, imgW, imgH);
             histogramData = computeHistogram(originalImageData);
 
-            // Setup display canvas
-            canvasEl.width = imgW;
-            canvasEl.height = imgH;
-            ctx = canvasEl.getContext("2d")!;
-            imageLoaded = true;
+            // Setup display canvas — guard against null binding
+            if (canvasEl) {
+                canvasEl.width = imgW;
+                canvasEl.height = imgH;
+                ctx = canvasEl.getContext("2d")!;
+                imageLoaded = true;
 
-            // Initial render: show the unprocessed image first
-            ctx.drawImage(sourceCanvas, 0, 0);
+                // Initial render: show the unprocessed image first
+                ctx.drawImage(sourceCanvas, 0, 0);
 
-            // Then trigger the Rust pipeline for initial view
-            triggerProcess(true);
+                // Then trigger the Rust pipeline for initial view
+                triggerProcess(true);
+            } else {
+                // Canvas not yet bound — wait a tick for Svelte to bind it
+                requestAnimationFrame(() => {
+                    if (canvasEl) {
+                        canvasEl.width = imgW;
+                        canvasEl.height = imgH;
+                        ctx = canvasEl.getContext("2d")!;
+                        imageLoaded = true;
+                        ctx.drawImage(sourceCanvas, 0, 0);
+                        triggerProcess(true);
+                    } else {
+                        console.error("Canvas element still not available after rAF");
+                        imageLoaded = true;
+                    }
+                });
+            }
         };
         sourceImg.onerror = () => {
             console.error("Failed to load image for editor");
@@ -98,10 +142,10 @@
     });
 
     async function triggerProcess(preview: boolean = true) {
-        if (!imagePath) return;
+        if (!imagePath || !canvasEl || !ctx) return;
 
         const result = await processImage(imagePath, adjustments, preview, preview ? 80 : 0);
-        if (result && ctx) {
+        if (result && ctx && canvasEl) {
             // If preview resolution differs from canvas, we need to scale
             if (result.width !== canvasEl.width || result.height !== canvasEl.height) {
                 // Draw preview scaled to full canvas
@@ -121,9 +165,9 @@
     }
 
     async function triggerFullRes() {
-        if (!imagePath) return;
+        if (!imagePath || !canvasEl || !ctx) return;
         const result = await processImageFull(imagePath, adjustments);
-        if (result && ctx) {
+        if (result && ctx && canvasEl) {
             if (result.width !== canvasEl.width || result.height !== canvasEl.height) {
                 canvasEl.width = result.width;
                 canvasEl.height = result.height;
@@ -253,15 +297,27 @@
             </div>
         </div>
 
+        <!-- Resize handle -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div
+            class="resize-handle"
+            class:active={isResizing}
+            on:mousedown={startResize}
+        >
+            <div class="resize-grip"></div>
+        </div>
+
         <!-- Editing Sidebar -->
-        <EditingSidebar
-            {adjustments}
-            {histogramData}
-            {showOriginal}
-            on:change={onAdjustmentChange}
-            on:resetAll={onResetAll}
-            on:beforeAfter={onBeforeAfter}
-        />
+        <div class="sidebar-wrapper" style="width: {sidebarWidth}px;">
+            <EditingSidebar
+                {adjustments}
+                {histogramData}
+                {showOriginal}
+                on:change={onAdjustmentChange}
+                on:resetAll={onResetAll}
+                on:beforeAfter={onBeforeAfter}
+            />
+        </div>
     </div>
 </div>
 
@@ -379,25 +435,25 @@
         overflow: hidden;
         position: relative;
         background: #0e0e12;
-        padding: 16px;
+        padding: 24px;
+        min-width: 0;
     }
 
     .canvas-wrapper {
-        will-change: transform;
-        contain: strict;
         display: flex;
         align-items: center;
         justify-content: center;
         max-width: 100%;
         max-height: 100%;
+        position: relative;
     }
 
     .editor-canvas {
         max-width: 100%;
-        max-height: 100%;
+        max-height: calc(100vh - 52px);
         object-fit: contain;
-        border-radius: 4px;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        border-radius: 6px;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
     }
 
     .editor-loading {
@@ -425,5 +481,53 @@
 
     @keyframes spin {
         to { transform: rotate(360deg); }
+    }
+
+    /* ── Resize Handle ── */
+    .resize-handle {
+        width: 6px;
+        flex-shrink: 0;
+        cursor: col-resize;
+        position: relative;
+        background: transparent;
+        transition: background 150ms ease;
+        z-index: 10;
+    }
+
+    .resize-handle:hover,
+    .resize-handle.active {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    .resize-grip {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 3px;
+        height: 32px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        transition: all 150ms ease;
+    }
+
+    .resize-handle:hover .resize-grip,
+    .resize-handle.active .resize-grip {
+        background: var(--md-sys-color-primary, #a0c4ff);
+        height: 48px;
+        width: 3px;
+    }
+
+    /* ── Sidebar Wrapper ── */
+    .sidebar-wrapper {
+        flex-shrink: 0;
+        height: 100%;
+        min-width: 280px;
+        max-width: 500px;
+        overflow: hidden;
+    }
+
+    .sidebar-wrapper :global(.editing-sidebar) {
+        width: 100% !important;
     }
 </style>
