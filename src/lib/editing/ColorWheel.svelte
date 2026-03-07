@@ -170,8 +170,8 @@
     }
 
     .wheel-canvas {
-        width: 120px;
-        height: 120px;
+        width: 96px;
+        height: 96px;
         cursor: crosshair;
         border-radius: 50%;
     }

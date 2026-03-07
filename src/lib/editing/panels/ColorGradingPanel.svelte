@@ -68,8 +68,9 @@
 
     .wheels-row {
         display: flex;
-        justify-content: space-between;
-        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
         margin-bottom: 12px;
     }
 

@@ -28,6 +28,46 @@
     let thumbnailCache = new Map<string, string>();
     let shareToast = false;
 
+    // Zoom & pan
+    let dvZoom = 1;
+    let dvPanX = 0;
+    let dvPanY = 0;
+    let dvIsPanning = false;
+    let dvPanStartX = 0;
+    let dvPanStartY = 0;
+    let dvPanStartPanX = 0;
+    let dvPanStartPanY = 0;
+
+    function dvZoomIn() { dvZoom = Math.min(dvZoom * 1.3, 10); }
+    function dvZoomOut() { dvZoom = Math.max(dvZoom / 1.3, 0.5); }
+    function dvZoomFit() { dvZoom = 1; dvPanX = 0; dvPanY = 0; }
+    function dvZoomToggle() {
+        if (dvZoom > 1.05) { dvZoomFit(); }
+        else { dvZoom = 3; }
+    }
+    function dvHandleWheel(e: WheelEvent) {
+        e.preventDefault();
+        const d = e.deltaY > 0 ? 0.9 : 1.1;
+        dvZoom = Math.max(0.5, Math.min(10, dvZoom * d));
+        if (dvZoom <= 1.05) { dvPanX = 0; dvPanY = 0; }
+    }
+    function dvPointerDown(e: MouseEvent) {
+        if (dvZoom > 1.05) {
+            dvIsPanning = true;
+            dvPanStartX = e.clientX;
+            dvPanStartY = e.clientY;
+            dvPanStartPanX = dvPanX;
+            dvPanStartPanY = dvPanY;
+        }
+    }
+    function dvPointerMove(e: MouseEvent) {
+        if (!dvIsPanning) return;
+        dvPanX = dvPanStartPanX + (e.clientX - dvPanStartX);
+        dvPanY = dvPanStartPanY + (e.clientY - dvPanStartY);
+    }
+    function dvPointerUp() { dvIsPanning = false; }
+    $: dvZoomPct = Math.round(dvZoom * 100);
+
     // Swipe gesture tracking
     let touchStartX = 0;
     let touchStartY = 0;
@@ -156,6 +196,15 @@
             case "i":
                 showInfoPanel.update((v) => !v);
                 break;
+            case "=":
+                if (e.ctrlKey || e.metaKey) { e.preventDefault(); dvZoomIn(); }
+                break;
+            case "-":
+                if (e.ctrlKey || e.metaKey) { e.preventDefault(); dvZoomOut(); }
+                break;
+            case "0":
+                if (e.ctrlKey || e.metaKey) { e.preventDefault(); dvZoomFit(); }
+                break;
         }
     }
 
@@ -183,6 +232,8 @@
         loadMainImage($selectedPhoto);
         loadCurrentTags();
         setTimeout(scrollFilmstripToCenter, 50);
+        // Reset zoom when changing photos
+        dvZoom = 1; dvPanX = 0; dvPanY = 0;
     }
 
     function formatSize(bytes: number): string {
@@ -388,7 +439,18 @@
         {/if}
 
         <!-- Photo / Video -->
-        <div class="image-container">
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div
+            class="image-container"
+            on:wheel={dvHandleWheel}
+            on:mousedown={dvPointerDown}
+            on:mousemove={dvPointerMove}
+            on:mouseup={dvPointerUp}
+            on:mouseleave={dvPointerUp}
+            on:dblclick={dvZoomToggle}
+            class:dv-zoomed={dvZoom > 1.05}
+            class:dv-panning={dvIsPanning}
+        >
             {#if imageLoading}
                 <div class="image-loading">
                     <div class="loading-spinner"></div>
@@ -410,9 +472,16 @@
                         alt={$selectedPhoto?.filename || ""}
                         class="main-image"
                         draggable="false"
+                        style="transform: scale({dvZoom}) translate({dvPanX / dvZoom}px, {dvPanY / dvZoom}px);"
                     />
                 {/if}
             {/if}
+            <!-- Zoom controls overlay -->
+            <div class="dv-zoom-controls">
+                <button class="dv-zoom-btn" on:click|stopPropagation={dvZoomOut} title="Zoom out">−</button>
+                <button class="dv-zoom-label" on:click|stopPropagation={dvZoomFit} title="Fit">{dvZoomPct}%</button>
+                <button class="dv-zoom-btn" on:click|stopPropagation={dvZoomIn} title="Zoom in">+</button>
+            </div>
         </div>
 
         <!-- Info panel -->
@@ -792,6 +861,16 @@
         justify-content: center;
         padding: var(--sp-6);
         min-width: 0;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .image-container.dv-zoomed {
+        cursor: grab;
+    }
+
+    .image-container.dv-panning {
+        cursor: grabbing;
     }
 
     .main-image {
@@ -801,6 +880,70 @@
         border-radius: var(--radius-md);
         user-select: none;
         animation: fadeInScale var(--duration-base) var(--ease-emphasized-decel);
+        transform-origin: center center;
+        transition: transform 50ms ease-out;
+    }
+
+    /* Zoom controls */
+    .dv-zoom-controls {
+        position: absolute;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(12px);
+        border-radius: 12px;
+        padding: 2px;
+        opacity: 0;
+        transition: opacity 200ms ease;
+        pointer-events: none;
+    }
+
+    .image-container:hover .dv-zoom-controls {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .dv-zoom-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.7);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 100ms ease;
+    }
+
+    .dv-zoom-btn:hover {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+    }
+
+    .dv-zoom-label {
+        padding: 0 6px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.5);
+        font-family: 'Outfit', monospace;
+        font-size: 11px;
+        cursor: pointer;
+        min-width: 38px;
+        justify-content: center;
+    }
+
+    .dv-zoom-label:hover {
+        color: rgba(255,255,255,0.8);
     }
 
     .image-loading {

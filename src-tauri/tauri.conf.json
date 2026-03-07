@@ -26,6 +26,7 @@
                 "scope": [
                     "$APP_CACHE_DIR/**",
                     "$APP_DATA_DIR/**",
+                    "$HOME/.cache/galleria-expressive/**",
                     "$HOME/Pictures/**",
                     "$HOME/Downloads/**",
                     "$HOME/Documents/**",

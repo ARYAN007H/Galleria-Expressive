@@ -50,10 +50,73 @@
     let undoStack: AdjustmentState[] = [];
 
     // Resizable sidebar
-    let sidebarWidth = 340;
+    let sidebarWidth = 320;
     let isResizing = false;
-    const MIN_SIDEBAR = 280;
-    const MAX_SIDEBAR = 500;
+    const MIN_SIDEBAR = 260;
+    const MAX_SIDEBAR = 480;
+
+    // Zoom
+    let zoomLevel = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartPanX = 0;
+    let panStartPanY = 0;
+
+    function zoomIn() {
+        zoomLevel = Math.min(zoomLevel * 1.25, 8);
+    }
+    function zoomOut() {
+        zoomLevel = Math.max(zoomLevel / 1.25, 0.25);
+    }
+    function zoomFit() {
+        zoomLevel = 1;
+        panX = 0;
+        panY = 0;
+    }
+    function zoom100() {
+        zoomLevel = 1;
+        panX = 0;
+        panY = 0;
+        // Calculate 100% zoom relative to fit
+        if (canvasEl) {
+            const area = canvasEl.parentElement?.parentElement;
+            if (area) {
+                const areaW = area.clientWidth - 48;
+                const areaH = area.clientHeight - 48;
+                const fitScale = Math.min(areaW / imgW, areaH / imgH, 1);
+                zoomLevel = 1 / fitScale;
+            }
+        }
+    }
+
+    function handleWheel(e: WheelEvent) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        zoomLevel = Math.max(0.25, Math.min(8, zoomLevel * delta));
+    }
+
+    function handleCanvasPointerDown(e: MouseEvent) {
+        if (zoomLevel > 1) {
+            isPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            panStartPanX = panX;
+            panStartPanY = panY;
+        }
+    }
+
+    function handleCanvasPointerMove(e: MouseEvent) {
+        if (!isPanning) return;
+        panX = panStartPanX + (e.clientX - panStartX);
+        panY = panStartPanY + (e.clientY - panStartY);
+    }
+
+    function handleCanvasPointerUp() {
+        isPanning = false;
+    }
 
     function startResize(e: MouseEvent) {
         e.preventDefault();
@@ -97,34 +160,8 @@
             originalImageData = sctx.getImageData(0, 0, imgW, imgH);
             histogramData = computeHistogram(originalImageData);
 
-            // Setup display canvas — guard against null binding
-            if (canvasEl) {
-                canvasEl.width = imgW;
-                canvasEl.height = imgH;
-                ctx = canvasEl.getContext("2d")!;
-                imageLoaded = true;
-
-                // Initial render: show the unprocessed image first
-                ctx.drawImage(sourceCanvas, 0, 0);
-
-                // Then trigger the Rust pipeline for initial view
-                triggerProcess(true);
-            } else {
-                // Canvas not yet bound — wait a tick for Svelte to bind it
-                requestAnimationFrame(() => {
-                    if (canvasEl) {
-                        canvasEl.width = imgW;
-                        canvasEl.height = imgH;
-                        ctx = canvasEl.getContext("2d")!;
-                        imageLoaded = true;
-                        ctx.drawImage(sourceCanvas, 0, 0);
-                        triggerProcess(true);
-                    } else {
-                        console.error("Canvas element still not available after rAF");
-                        imageLoaded = true;
-                    }
-                });
-            }
+            // Setup display canvas
+            initCanvas();
         };
         sourceImg.onerror = () => {
             console.error("Failed to load image for editor");
@@ -141,14 +178,28 @@
         }, 10000);
     });
 
+    function initCanvas() {
+        const tryInit = () => {
+            if (canvasEl) {
+                canvasEl.width = imgW;
+                canvasEl.height = imgH;
+                ctx = canvasEl.getContext("2d")!;
+                imageLoaded = true;
+                ctx.drawImage(sourceCanvas, 0, 0);
+                triggerProcess(true);
+            } else {
+                requestAnimationFrame(tryInit);
+            }
+        };
+        tryInit();
+    }
+
     async function triggerProcess(preview: boolean = true) {
         if (!imagePath || !canvasEl || !ctx) return;
 
         const result = await processImage(imagePath, adjustments, preview, preview ? 80 : 0);
         if (result && ctx && canvasEl) {
-            // If preview resolution differs from canvas, we need to scale
             if (result.width !== canvasEl.width || result.height !== canvasEl.height) {
-                // Draw preview scaled to full canvas
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = result.width;
                 tempCanvas.height = result.height;
@@ -158,8 +209,6 @@
             } else {
                 ctx.putImageData(result, 0, 0);
             }
-
-            // Update histogram
             histogramData = computeHistogram(result);
         }
     }
@@ -208,18 +257,11 @@
         if (undoStack.length === 0) hasChanges = false;
     }
 
-    function resetAll() {
-        onResetAll();
-    }
-
-    // Save
     async function handleSave() {
         if (!$selectedPhoto || !canvasEl) return;
         saving = true;
         try {
-            // Process at full resolution before saving
             await triggerFullRes();
-
             const base64 = canvasToBase64(canvasEl, "image/jpeg", 0.95);
             const data = base64.split(",")[1];
             const originalPath = $selectedPhoto.path;
@@ -240,14 +282,18 @@
     function handleKeydown(e: KeyboardEvent) {
         if (e.key === "Escape") onClose();
         if (e.key === "z" && (e.ctrlKey || e.metaKey)) undo();
+        if (e.key === "=" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); zoomIn(); }
+        if (e.key === "-" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); zoomOut(); }
+        if (e.key === "0" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); zoomFit(); }
     }
 
-    // Handle pointer release for full-res processing
     function handlePointerUp() {
         if (hasChanges) {
             triggerFullRes();
         }
     }
+
+    $: zoomPercent = Math.round(zoomLevel * 100);
 </script>
 
 <svelte:window on:keydown={handleKeydown} on:pointerup={handlePointerUp} />
@@ -261,6 +307,14 @@
         </button>
         <div class="editor-title">Edit Photo</div>
         <div class="editor-actions">
+            <!-- Zoom controls -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" on:click={zoomOut} title="Zoom out (Ctrl+-)">−</button>
+                <button class="zoom-label" on:click={zoomFit} title="Fit to view (Ctrl+0)">{zoomPercent}%</button>
+                <button class="zoom-btn" on:click={zoomIn} title="Zoom in (Ctrl+=)">+</button>
+                <button class="zoom-btn text" on:click={zoom100} title="100%">1:1</button>
+            </div>
+            <div class="header-divider"></div>
             <button
                 class="editor-btn"
                 on:click={undo}
@@ -282,14 +336,27 @@
     <!-- Main content: Canvas + Sidebar -->
     <div class="editor-body">
         <!-- Canvas area -->
-        <div class="editor-canvas-area">
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
+        <div
+            class="editor-canvas-area"
+            on:wheel={handleWheel}
+            on:mousedown={handleCanvasPointerDown}
+            on:mousemove={handleCanvasPointerMove}
+            on:mouseup={handleCanvasPointerUp}
+            on:mouseleave={handleCanvasPointerUp}
+            class:panning={isPanning}
+            class:zoomable={zoomLevel > 1}
+        >
             {#if !imageLoaded}
                 <div class="editor-loading">
                     <div class="loading-spinner"></div>
                     <span>Loading image…</span>
                 </div>
             {/if}
-            <div class="canvas-wrapper">
+            <div
+                class="canvas-wrapper"
+                style="transform: scale({zoomLevel}) translate({panX / zoomLevel}px, {panY / zoomLevel}px);"
+            >
                 <canvas
                     bind:this={canvasEl}
                     class="editor-canvas"
@@ -322,8 +389,6 @@
 </div>
 
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-
     .editor-overlay {
         position: fixed;
         inset: 0;
@@ -331,10 +396,10 @@
         display: flex;
         flex-direction: column;
         background: var(--md-sys-color-surface, #1a1a1f);
-        animation: fadeIn 250ms cubic-bezier(0.2, 0, 0, 1);
+        animation: editorFadeIn 200ms cubic-bezier(0.2, 0, 0, 1);
     }
 
-    @keyframes fadeIn {
+    @keyframes editorFadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
     }
@@ -344,16 +409,16 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 8px 16px;
-        height: 52px;
+        padding: 6px 12px;
+        height: 48px;
         flex-shrink: 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         background: var(--md-sys-color-surface-container, #22222a);
     }
 
     .editor-title {
-        font-family: 'Instrument Sans', sans-serif;
-        font-size: 15px;
+        font-family: 'Outfit', 'Instrument Sans', sans-serif;
+        font-size: 14px;
         font-weight: 600;
         color: var(--md-sys-color-on-surface, rgba(255, 255, 255, 0.85));
     }
@@ -361,17 +426,24 @@
     .editor-actions {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+    }
+
+    .header-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(255,255,255,0.08);
+        margin: 0 4px;
     }
 
     .editor-btn {
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 6px 14px;
-        border-radius: 12px;
-        font-family: 'Instrument Sans', sans-serif;
-        font-size: 13px;
+        padding: 5px 12px;
+        border-radius: 10px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 12px;
         font-weight: 500;
         color: var(--md-sys-color-on-surface-variant, rgba(255, 255, 255, 0.65));
         background: var(--md-sys-color-surface-container-high, rgba(255,255,255,0.06));
@@ -401,7 +473,7 @@
     }
 
     .btn-icon {
-        font-size: 14px;
+        font-size: 13px;
     }
 
     .editor-btn.save {
@@ -412,12 +484,67 @@
 
     .editor-btn.save:hover {
         filter: brightness(1.1);
-        transform: scale(1.02);
     }
 
     .editor-btn.save:disabled {
         opacity: 0.5;
-        transform: none;
+    }
+
+    /* ── Zoom Controls ── */
+    .zoom-controls {
+        display: flex;
+        align-items: center;
+        background: var(--md-sys-color-surface-container-high, rgba(255,255,255,0.06));
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .zoom-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.6);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 100ms ease;
+    }
+
+    .zoom-btn.text {
+        font-size: 10px;
+        width: auto;
+        padding: 0 8px;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .zoom-btn:hover {
+        background: rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.9);
+    }
+
+    .zoom-label {
+        padding: 0 6px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.5);
+        font-family: 'Outfit', monospace;
+        font-size: 10px;
+        cursor: pointer;
+        min-width: 40px;
+        justify-content: center;
+    }
+
+    .zoom-label:hover {
+        color: rgba(255,255,255,0.8);
     }
 
     /* ── Body: Canvas + Sidebar ── */
@@ -434,9 +561,17 @@
         justify-content: center;
         overflow: hidden;
         position: relative;
-        background: #0e0e12;
-        padding: 24px;
+        background: #0c0c10;
+        padding: 16px;
         min-width: 0;
+    }
+
+    .editor-canvas-area.zoomable {
+        cursor: grab;
+    }
+
+    .editor-canvas-area.panning {
+        cursor: grabbing;
     }
 
     .canvas-wrapper {
@@ -446,14 +581,16 @@
         max-width: 100%;
         max-height: 100%;
         position: relative;
+        transform-origin: center center;
+        transition: transform 50ms ease-out;
     }
 
     .editor-canvas {
         max-width: 100%;
-        max-height: calc(100vh - 52px);
+        max-height: calc(100vh - 48px - 32px);
         object-fit: contain;
-        border-radius: 6px;
-        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+        border-radius: 4px;
+        box-shadow: 0 4px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.03);
     }
 
     .editor-loading {
@@ -465,16 +602,16 @@
         justify-content: center;
         gap: 12px;
         color: rgba(255, 255, 255, 0.5);
-        font-family: 'Instrument Sans', sans-serif;
-        font-size: 14px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 13px;
         z-index: 2;
     }
 
     .loading-spinner {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
-        border: 3px solid rgba(255, 255, 255, 0.08);
+        border: 2px solid rgba(255, 255, 255, 0.08);
         border-top-color: var(--md-sys-color-primary, #a0c4ff);
         animation: spin 0.7s linear infinite;
     }
@@ -485,7 +622,7 @@
 
     /* ── Resize Handle ── */
     .resize-handle {
-        width: 6px;
+        width: 5px;
         flex-shrink: 0;
         cursor: col-resize;
         position: relative;
@@ -496,7 +633,7 @@
 
     .resize-handle:hover,
     .resize-handle.active {
-        background: rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.04);
     }
 
     .resize-grip {
@@ -505,29 +642,24 @@
         left: 50%;
         transform: translate(-50%, -50%);
         width: 3px;
-        height: 32px;
+        height: 28px;
         border-radius: 2px;
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.1);
         transition: all 150ms ease;
     }
 
     .resize-handle:hover .resize-grip,
     .resize-handle.active .resize-grip {
         background: var(--md-sys-color-primary, #a0c4ff);
-        height: 48px;
-        width: 3px;
+        height: 40px;
     }
 
     /* ── Sidebar Wrapper ── */
     .sidebar-wrapper {
         flex-shrink: 0;
         height: 100%;
-        min-width: 280px;
-        max-width: 500px;
+        min-width: 260px;
+        max-width: 480px;
         overflow: hidden;
-    }
-
-    .sidebar-wrapper :global(.editing-sidebar) {
-        width: 100% !important;
     }
 </style>
