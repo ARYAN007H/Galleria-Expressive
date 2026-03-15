@@ -1,10 +1,11 @@
-<script context="module">
+<script context="module" lang="ts">
     import { icons } from "../lib/icons";
     import { writable } from 'svelte/store';
+    import type { Photo } from "../lib/store";
     // Export scroll direction so BottomPill can react
     export const scrollingDown = writable(false);
     // Export long-press photo for FullBleedPreview
-    export const longPressPhoto = writable(null);
+    export const longPressPhoto = writable<Photo | null>(null);
 </script>
 
 <script lang="ts">
@@ -14,6 +15,7 @@
         filteredPhotos,
         selectedPhoto,
         appSettings,
+        viewMode,
         updateSettings,
         isMultiSelectMode,
         selectedPhotoIds,
@@ -24,7 +26,6 @@
         getThumbnail,
         convertFileSource,
     } from "../lib/store";
-    import type { Photo } from "../lib/store";
     import { getCachedThumb, cacheThumb } from "../lib/thumbnailCache";
     import { calculateMosaicLayout, getMosaicTotalHeight, isMosaicDateBreak, type MosaicItem, type MosaicRow, type PhotoLike } from "../lib/mosaicLayout";
     import DateBreak from "./DateBreak.svelte";
@@ -148,16 +149,17 @@
         groups: { label: string; dateKey: string; photos: Photo[] }[],
         cols: number,
         size: number,
-        cWidth: number
+        cWidth: number,
+        isList: boolean = false
     ) {
         const rows: VirtualRow[] = [];
-        const isExpressive = $appSettings.layoutMode === 'expressive';
+        const isExpressive = !isList && $appSettings.layoutMode === 'expressive';
         const gap = $appSettings.layoutMode === 'compact' ? 2 : isExpressive ? 6 : 4;
         const headerHeight = $appSettings.layoutMode === 'compact' ? 30 : 40;
         const sectionGap = $appSettings.layoutMode === 'compact' ? 8 : isExpressive ? 0 : 32;
 
-        const effectiveCols = isExpressive ? 6 : cols;
-        const chunkSize = isExpressive ? 12 : effectiveCols;
+        const effectiveCols = isList ? 1 : (isExpressive ? 6 : cols);
+        const chunkSize = isList ? 1 : (isExpressive ? 12 : effectiveCols);
 
         // Calculate actual dynamically sized width to prevent overlap
         // normal mode has padding: 0 var(--sp-5) -> 20px padding each side = 40px
@@ -184,9 +186,9 @@
             for (let i = 0; i < group.photos.length; i += chunkSize) {
                 const chunk = group.photos.slice(i, i + chunkSize);
                 
-                let rowH = isExpressive ? (180 * 2 + gap) : colW;
+                let rowH = isList ? 72 : (isExpressive ? (180 * 2 + gap) : colW);
                 
-                if (!isExpressive && zoom >= 4) {
+                if (!isList && !isExpressive && zoom >= 4) {
                     let maxH = 0;
                     for (const p of chunk) {
                         const aspect = getPhotoAspect(p);
@@ -271,7 +273,7 @@
             buildMosaicLayout($filteredPhotos, containerWidth);
             computeVisibleMosaic();
         } else {
-            const result = buildVirtualRows($groupedPhotos, columnCount, itemSize, containerWidth);
+            const result = buildVirtualRows($groupedPhotos, columnCount, itemSize, containerWidth, $viewMode === 'list');
             virtualRows = result.rows;
             totalHeight = result.totalHeight;
             computeVisibleRows();
@@ -432,7 +434,7 @@
                 containerWidth = entry.contentRect.width;
                 containerHeight = entry.contentRect.height;
                 // Rebuild layout on resize
-                const result = buildVirtualRows($groupedPhotos, columnCount, itemSize);
+                const result = buildVirtualRows($groupedPhotos, columnCount, itemSize, containerWidth, $viewMode === 'list');
                 virtualRows = result.rows;
                 totalHeight = result.totalHeight;
                 computeVisibleRows();
@@ -507,8 +509,9 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
     class="photo-grid-container"
-    class:layout-compact={$appSettings.layoutMode === "compact"}
+    class:layout-compact={$appSettings.layoutMode === "compact" && $viewMode !== "list"}
     class:layout-expressive={$appSettings.layoutMode === "expressive"}
+    class:layout-list={$viewMode === "list" && $appSettings.layoutMode !== "expressive"}
     on:wheel={handleWheel}
     bind:this={scrollContainer}
 >
@@ -628,6 +631,13 @@
                                         />
                                         <div class="placeholder">
                                             <span class="placeholder-icon">{@html icons.image || ""}</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-details">
+                                        <div class="list-filename" title={photo.filename}>{photo.filename}</div>
+                                        <div class="list-meta">
+                                            <span class="list-date">{new Date(photo.takenAt || photo.modifiedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span class="list-size">{(photo.sizeBytes / 1048576).toFixed(1)} MB</span>
                                         </div>
                                     </div>
                                     {#if photo.mediaType === "video"}
@@ -853,6 +863,98 @@
 
     .layout-compact .date-header-pill {
         padding: 4px 12px;
+    }
+
+    /* ── List Mode Layout ── */
+    .layout-list .photo-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .layout-list .photo-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        aspect-ratio: auto !important;
+        height: 72px;
+        padding: 8px;
+        background: var(--md-sys-color-surface-container-low);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: var(--radius-md);
+        text-align: left;
+    }
+
+    .layout-list .photo-card:hover {
+        transform: scale(1.01);
+        z-index: 5;
+    }
+
+    .layout-list .photo-thumb {
+        width: 56px;
+        height: 56px;
+        flex-shrink: 0;
+        border-radius: var(--radius-sm);
+    }
+    
+    .list-details {
+        display: none;
+    }
+
+    .layout-list .list-details {
+        display: flex;
+        flex: 1;
+        margin-left: 16px;
+        margin-right: 16px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+    }
+
+    .list-filename {
+        font-size: var(--text-base);
+        color: var(--text-primary);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+        margin-right: 16px;
+    }
+
+    .list-meta {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        display: flex;
+        gap: 32px;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .list-size {
+        font-variant-numeric: tabular-nums;
+        width: 80px;
+        text-align: right;
+    }
+
+    .list-date {
+        min-width: 140px;
+    }
+
+    .layout-list .badge-video {
+        bottom: 12px;
+        left: 36px;
+        padding: 2px 4px;
+        font-size: 9px;
+    }
+
+    .layout-list .badge-fav {
+        top: 12px;
+        right: auto;
+        left: 44px;
+        padding: 2px;
+        transform: scale(0.8);
     }
 
     /* ── Expressive Mode — Justified Mosaic Layout ── */

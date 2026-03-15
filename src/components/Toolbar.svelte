@@ -56,6 +56,11 @@
     function handleClickOutside() {
         if (showSortMenu) showSortMenu = false;
     }
+
+    $: zoomPct = $appSettings.gridZoom === 1 ? '50%' : 
+                 $appSettings.gridZoom === 2 ? '75%' :
+                 $appSettings.gridZoom === 3 ? '100%' :
+                 $appSettings.gridZoom === 4 ? '150%' : '200%';
 </script>
 
 <svelte:window on:click={handleClickOutside} />
@@ -99,24 +104,26 @@
     </div>
 
     <div class="toolbar-right">
-        <div class="view-toggles">
-            <button
-                class="view-btn"
-                class:active={$viewMode === "grid"}
-                on:click={() => viewMode.set("grid")}
-                title="Grid View"
-            >
-                {@html icons.grid}
-            </button>
-            <button
-                class="view-btn"
-                class:active={$viewMode === "list"}
-                on:click={() => viewMode.set("list")}
-                title="List View"
-            >
-                {@html icons.list}
-            </button>
-        </div>
+        {#if $appSettings.layoutMode !== 'expressive'}
+            <div class="view-toggles">
+                <button
+                    class="view-btn"
+                    class:active={$viewMode === "grid"}
+                    on:click={() => viewMode.set("grid")}
+                    title="Grid View"
+                >
+                    {@html icons.grid}
+                </button>
+                <button
+                    class="view-btn"
+                    class:active={$viewMode === "list"}
+                    on:click={() => viewMode.set("list")}
+                    title="List View"
+                >
+                    {@html icons.list}
+                </button>
+            </div>
+        {/if}
 
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -146,7 +153,7 @@
             {/if}
         </div>
 
-        <div class="zoom-control">
+        <div class="zoom-control" title="Zoom: {zoomPct}">
             <span class="zoom-icon small">{@html icons.zoomOut}</span>
             <input
                 type="range"
@@ -157,6 +164,7 @@
                 class="zoom-slider"
             />
             <span class="zoom-icon large">{@html icons.zoomIn}</span>
+            <span class="zoom-label">{zoomPct}</span>
         </div>
 
         <button
@@ -459,6 +467,15 @@
 
     .zoom-slider::-webkit-slider-thumb:hover {
         transform: scale(1.2);
+    }
+
+    .zoom-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        min-width: 34px;
+        text-align: right;
     }
 
     .settings-btn {

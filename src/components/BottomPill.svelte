@@ -157,15 +157,17 @@
         transform: scaleX(0);
         opacity: 0;
         transition:
-            transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+            transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
             opacity 0.2s var(--ease-standard),
-            border-radius 0.35s var(--ease-emphasized);
+            border-radius 0.4s var(--ease-emphasized),
+            box-shadow 0.4s var(--ease-emphasized);
     }
 
     .active-bg.show {
         transform: scaleX(1);
         opacity: 1;
         border-radius: 16px;
+        box-shadow: 0 0 12px var(--accent-subtle, rgba(255, 255, 255, 0.1));
     }
 
     .pill-icon {

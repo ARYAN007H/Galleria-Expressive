@@ -1027,8 +1027,8 @@
     }
 
     .info-section {
-        margin-bottom: var(--sp-5);
-        padding-bottom: var(--sp-5);
+        margin-bottom: var(--sp-6);
+        padding-bottom: var(--sp-6);
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
@@ -1056,12 +1056,13 @@
     .info-label {
         font-size: var(--text-sm);
         color: rgba(255, 255, 255, 0.45);
+        font-weight: 600;
         flex-shrink: 0;
     }
 
     .info-value {
         font-size: var(--text-sm);
-        color: rgba(255, 255, 255, 0.88);
+        color: rgba(255, 255, 255, 0.75);
         text-align: right;
         max-width: 180px;
     }
