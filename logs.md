@@ -1,5 +1,8 @@
 # Photo Sorter Update Logs
 
+### **v0.12.1** - 2026-03-20
+* **Fix**: Added required Windows `.ico` asset to Tauri bundle configuration to resolve automated GitHub release failures on Windows platforms.
+
 ### **v0.12.0** - 2026-03-20
 * **Fix**: Removed 'extreme portrait hero' heuristic in `mosaicLayout.ts` to seamlessly group vertical images in justified layouts without leaving huge horizontal blank spaces. *(Current Update)*
 
