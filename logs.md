@@ -1,5 +1,8 @@
 # Photo Sorter Update Logs
 
+### **v0.12.2** - 2026-03-20
+* **Fix**: Safely disabled the faulty WebKit DMA-BUF hardware renderer exclusively on Linux environments to prevent the fatal Nvidia `EGL_BAD_PARAMETER` startup crash.
+
 ### **v0.12.1** - 2026-03-20
 * **Fix**: Added required Windows `.ico` asset to Tauri bundle configuration to resolve automated GitHub release failures on Windows platforms.
 
