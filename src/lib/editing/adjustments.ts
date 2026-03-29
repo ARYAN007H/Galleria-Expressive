@@ -19,15 +19,16 @@ export interface ColorWheelState {
 }
 
 export interface AdjustmentState {
+    // ── Global Adjustments ──
     // Basic
-    temperature: number;
-    tint: number;
-    exposure: number;
-    contrast: number;
-    highlights: number;
-    shadows: number;
-    whites: number;
-    blacks: number;
+    temperature: number; // 2000-50000K
+    tint: number;        // -150 to 150
+    exposure: number;    // -5 to +5 EVs
+    contrast: number;    // -100 to 100
+    highlights: number;  // -100 to 100
+    shadows: number;     // -100 to 100
+    whites: number;      // -100 to 100
+    blacks: number;      // -100 to 100
     texture: number;
     clarity: number;
     dehaze: number;
@@ -40,6 +41,12 @@ export interface AdjustmentState {
     toneCurveR: ToneCurvePoint[];
     toneCurveG: ToneCurvePoint[];
     toneCurveB: ToneCurvePoint[];
+
+    // Parametric Tone Curve
+    tcParametricHighlights: number; // -100 to 100
+    tcParametricLights: number;     // -100 to 100
+    tcParametricDarks: number;      // -100 to 100
+    tcParametricShadows: number;    // -100 to 100
 
     // HSL (8 color ranges)
     hsl: HSLChannelState[];
@@ -87,6 +94,39 @@ export interface AdjustmentState {
     calGreenSat: number;
     calBlueHue: number;
     calBlueSat: number;
+
+    // Crop & Geometry
+    cropX: number;
+    cropY: number;
+    cropWidth: number;
+    cropHeight: number;
+    cropRotation: number;
+
+    // ── Local Adjustments ──
+    masks: MaskLayer[];
+}
+
+export type MaskType = 'linear_gradient' | 'radial_gradient' | 'brush';
+
+export interface MaskLayer {
+    id: string;             // Unique identifier for the mask
+    name: string;           // User-friendly name
+    type: MaskType;
+    active: boolean;        // Is this mask enabled?
+    inverted: boolean;      // Reverse the alpha map
+    
+    // Geometry logic for Linear Gradient: Start (p1) to End (p2)
+    // Geometry logic for Radial Gradient: Center (p1), Outer Radius (p2), Feather (radius)
+    // Coords are [0, 1] relative normalized across the cropped geometry
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    radius: number;         // Used for radial feather or brush width
+    feather: number;
+
+    // The isolated adjustments overriding or adding to the global image state in this local region
+    adjustments: Partial<AdjustmentState>;
 }
 
 export const HSL_COLORS = ['Red', 'Orange', 'Yellow', 'Green', 'Aqua', 'Blue', 'Purple', 'Magenta'] as const;
@@ -131,6 +171,11 @@ export const defaultAdjustments: AdjustmentState = {
     toneCurveG: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
     toneCurveB: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
 
+    tcParametricHighlights: 0,
+    tcParametricLights: 0,
+    tcParametricDarks: 0,
+    tcParametricShadows: 0,
+
     hsl: makeDefaultHSL(),
 
     cgShadows: makeDefaultWheel(),
@@ -171,20 +216,18 @@ export const defaultAdjustments: AdjustmentState = {
     calGreenSat: 0,
     calBlueHue: 0,
     calBlueSat: 0,
+
+    cropX: 0,
+    cropY: 0,
+    cropWidth: 1.0,
+    cropHeight: 1.0,
+    cropRotation: 0,
+
+    masks: [],
 };
 
 export function cloneAdjustments(adj: AdjustmentState): AdjustmentState {
-    return {
-        ...adj,
-        toneCurveRgb: adj.toneCurveRgb.map(p => ({ ...p })),
-        toneCurveR: adj.toneCurveR.map(p => ({ ...p })),
-        toneCurveG: adj.toneCurveG.map(p => ({ ...p })),
-        toneCurveB: adj.toneCurveB.map(p => ({ ...p })),
-        hsl: adj.hsl.map(h => ({ ...h })),
-        cgShadows: { ...adj.cgShadows },
-        cgMidtones: { ...adj.cgMidtones },
-        cgHighlights: { ...adj.cgHighlights },
-    };
+    return JSON.parse(JSON.stringify(adj));
 }
 
 /** Convert AdjustmentState to the payload format expected by Rust */
@@ -208,6 +251,11 @@ export function toRustPayload(adj: AdjustmentState): Record<string, unknown> {
         toneCurveR: adj.toneCurveR.map(p => [p.x, p.y]),
         toneCurveG: adj.toneCurveG.map(p => [p.x, p.y]),
         toneCurveB: adj.toneCurveB.map(p => [p.x, p.y]),
+
+        tcParametricHighlights: adj.tcParametricHighlights,
+        tcParametricLights: adj.tcParametricLights,
+        tcParametricDarks: adj.tcParametricDarks,
+        tcParametricShadows: adj.tcParametricShadows,
 
         hslHue: adj.hsl.map(h => h.hue),
         hslSat: adj.hsl.map(h => h.saturation),
@@ -257,6 +305,34 @@ export function toRustPayload(adj: AdjustmentState): Record<string, unknown> {
         calGreenSat: adj.calGreenSat,
         calBlueHue: adj.calBlueHue,
         calBlueSat: adj.calBlueSat,
+
+        cropX: adj.cropX,
+        cropY: adj.cropY,
+        cropWidth: adj.cropWidth,
+        cropHeight: adj.cropHeight,
+        cropRotation: adj.cropRotation,
+
+        masks: adj.masks.map(m => ({
+            id: m.id,
+            maskType: m.type,
+            active: m.active,
+            inverted: m.inverted,
+            x1: m.x1,
+            y1: m.y1,
+            x2: m.x2,
+            y2: m.y2,
+            radius: m.radius,
+            feather: m.feather,
+            // Convert partial adjustment struct dynamically
+            adjustments: Object.fromEntries(
+                Object.entries(m.adjustments)
+                .map(([k, v]) => {
+                    // Match the expected flat rust struct keys by creating a pseudo-payload
+                    // We recursively serialize a full dummy state overlaid with the partial
+                    return [k, v];
+                })
+            ) // we will map this better shortly
+        }))
     };
 }
 
@@ -275,15 +351,31 @@ export const filterPresets: FilterPreset[] = [
     },
     {
         id: 'vivid', name: 'Vivid',
-        adjustments: { saturation: 25, contrast: 15, vibrance: 30 },
+        adjustments: { saturation: 25, contrast: 15, vibrance: 30, clarity: 10 },
     },
     {
-        id: 'matte', name: 'Matte / Faded',
-        adjustments: { contrast: -15, blacks: 20, saturation: -10 },
+        id: 'vivid-warm', name: 'Vivid Warm',
+        adjustments: { saturation: 20, contrast: 12, vibrance: 25, temperature: 7000 },
     },
     {
-        id: 'bw', name: 'Black & White',
+        id: 'vivid-cool', name: 'Vivid Cool',
+        adjustments: { saturation: 20, contrast: 12, vibrance: 25, temperature: 5500, tint: -8 },
+    },
+    {
+        id: 'matte', name: 'Matte',
+        adjustments: { contrast: -15, blacks: 20, saturation: -10, dehaze: -8 },
+    },
+    {
+        id: 'bw', name: 'B&W',
         adjustments: { saturation: -100, contrast: 15 },
+    },
+    {
+        id: 'bw-high-contrast', name: 'B&W Noir',
+        adjustments: { saturation: -100, contrast: 40, blacks: -15, clarity: 20 },
+    },
+    {
+        id: 'silvertone', name: 'Silvertone',
+        adjustments: { saturation: -100, contrast: 20, exposure: 0.1, highlights: -10 },
     },
     {
         id: 'cool-shadows', name: 'Cool Shadows',
@@ -296,5 +388,25 @@ export const filterPresets: FilterPreset[] = [
     {
         id: 'cinematic', name: 'Teal & Orange',
         adjustments: { temperature: 5500, contrast: 20, saturation: -10, vibrance: 25 },
+    },
+    {
+        id: 'portrait-soft', name: 'Portrait Soft',
+        adjustments: { highlights: -20, shadows: 15, clarity: -15, vibrance: 10, sharpenAmount: 20 },
+    },
+    {
+        id: 'landscape', name: 'Landscape',
+        adjustments: { clarity: 25, vibrance: 20, dehaze: 15, highlights: -20, shadows: 20 },
+    },
+    {
+        id: 'dramatic', name: 'Dramatic',
+        adjustments: { contrast: 35, highlights: -25, shadows: -10, clarity: 30, texture: 20, saturation: -10 },
+    },
+    {
+        id: 'film-grain', name: 'Film Grain',
+        adjustments: { contrast: 10, saturation: -15, grainAmount: 30, grainSize: 15, grainRoughness: 60 },
+    },
+    {
+        id: 'moody', name: 'Moody',
+        adjustments: { exposure: -0.3, contrast: 15, shadows: -10, dehaze: -10, vibrance: -15, vignetteAmount: -30 },
     },
 ];

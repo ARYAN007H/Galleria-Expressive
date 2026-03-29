@@ -1,5 +1,5 @@
 // ── Image Processor ──
-// Tauri invoke wrapper with debounce and two-resolution pipeline
+// Tauri invoke wrapper with rAF throttling, adaptive resolution, and two-resolution pipeline
 // Uses temp file transfer instead of base64 for performance
 
 import { invokeCommand, convertFileSource } from '../store';
@@ -18,10 +18,17 @@ export interface HistogramData {
     l: number[];
 }
 
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let isProcessing = false;
-let pendingRequest: { path: string; adj: AdjustmentState; preview: boolean; resolve: (v: ImageData | null) => void } | null = null;
+let pendingRequest: {
+    path: string;
+    adj: AdjustmentState;
+    preview: boolean;
+    maxEdge?: number;
+    resolve: (v: ImageData | null) => void;
+} | null = null;
 let previewVersion = 0;
+let rafId: number | null = null;
+let isScrubbingActive = false;
 
 /**
  * Load source image into Rust cache (call once on editor open)
@@ -50,7 +57,7 @@ export async function unloadEditorSource(): Promise<void> {
 /**
  * Load a temp file preview image into an ImageData for canvas rendering
  */
-async function loadPreviewFile(previewPath: string, width: number, height: number): Promise<ImageData | null> {
+async function loadPreviewFile(previewPath: string, _width: number, _height: number): Promise<ImageData | null> {
     return new Promise((resolve) => {
         const img = new Image();
         const version = ++previewVersion;
@@ -74,99 +81,129 @@ async function loadPreviewFile(previewPath: string, width: number, height: numbe
 }
 
 /**
- * Process image with debounce. Returns ImageData for canvas rendering.
- * @param path - Absolute file path to the source image
- * @param adjustments - Current adjustment state
- * @param preview - If true, process at reduced resolution (800px long edge)
- * @param debounceMs - Debounce delay in ms (default 80)
+ * Core processing function — sends request to Rust backend
  */
-export function processImage(
+async function executeProcess(
     path: string,
-    adjustments: AdjustmentState,
-    preview: boolean = true,
-    debounceMs: number = 80,
+    adj: AdjustmentState,
+    preview: boolean,
+    maxEdge?: number,
 ): Promise<ImageData | null> {
-    return new Promise((resolve) => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-
-        pendingRequest = { path, adj: adjustments, preview, resolve };
-
-        debounceTimer = setTimeout(async () => {
-            if (!pendingRequest) return;
-            const req = pendingRequest;
-            pendingRequest = null;
-
-            if (isProcessing) {
-                req.resolve(null);
-                return;
-            }
-
-            isProcessing = true;
-            try {
-                const payload = toRustPayload(req.adj);
-                const result = await invokeCommand<ProcessResult>('process_image', {
-                    imagePath: req.path,
-                    adjustments: payload,
-                    preview: req.preview,
-                });
-
-                if (result && result.previewPath) {
-                    const imageData = await loadPreviewFile(result.previewPath, result.width, result.height);
-                    req.resolve(imageData);
-                } else {
-                    req.resolve(null);
-                }
-            } catch (err) {
-                console.error('Image processing failed:', err);
-                req.resolve(null);
-            } finally {
-                isProcessing = false;
-            }
-        }, debounceMs);
-    });
-}
-
-/**
- * Process at full resolution (no debounce). For final render on pointer release.
- */
-export async function processImageFull(
-    path: string,
-    adjustments: AdjustmentState,
-): Promise<ImageData | null> {
+    const payload = toRustPayload(adj);
     try {
-        const payload = toRustPayload(adjustments);
         const result = await invokeCommand<ProcessResult>('process_image', {
             imagePath: path,
             adjustments: payload,
-            preview: false,
+            preview,
+            maxPreviewEdge: maxEdge ?? null,
         });
 
         if (result && result.previewPath) {
             return await loadPreviewFile(result.previewPath, result.width, result.height);
         }
     } catch (err) {
-        console.error('Full-res processing failed:', err);
+        console.error('Image processing failed:', err);
     }
     return null;
 }
 
 /**
+ * Process image with rAF throttling for fluid 60fps-aligned updates.
+ * During active scrubbing (fast slider movement), only one rAF request
+ * is active at a time, and new slider values are coalesced.
+ *
+ * @param path - Absolute file path to the source image
+ * @param adjustments - Current adjustment state
+ * @param preview - If true, process at reduced resolution
+ * @param maxPreviewEdge - Adaptive preview: 600 during drag, 800 on release
+ */
+export function processImage(
+    path: string,
+    adjustments: AdjustmentState,
+    preview: boolean = true,
+    maxPreviewEdge?: number,
+): Promise<ImageData | null> {
+    return new Promise((resolve) => {
+        // Always store the latest request (coalesce)
+        pendingRequest = { path, adj: adjustments, preview, maxEdge: maxPreviewEdge, resolve };
+
+        // If already waiting for a frame, let the existing rAF handle it
+        if (isScrubbingActive) return;
+
+        isScrubbingActive = true;
+
+        // Use rAF to align processing with display refresh
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+            rafId = null;
+            isScrubbingActive = false;
+            drainPending();
+        });
+    });
+}
+
+/** Drain pending request queue — separated to avoid TS control-flow narrowing */
+async function drainPending(): Promise<void> {
+    if (isProcessing) {
+        // We're already processing. The `finally` block of the current 
+        // processing run will pick up `pendingRequest` when it's done.
+        return;
+    }
+
+    const req = pendingRequest;
+    if (!req) return;
+    pendingRequest = null;
+
+    isProcessing = true;
+    try {
+        const imageData = await executeProcess(req.path, req.adj, req.preview, req.maxEdge);
+        // Only resolve with the image data.
+        req.resolve(imageData);
+    } catch (err) {
+        req.resolve(null);
+    } finally {
+        isProcessing = false;
+        // If a new request queued while we were processing, fire it immediately
+        if (pendingRequest) {
+            // Use setTimeout to avoid exceeding max call stack size over long deep drags
+            setTimeout(drainPending, 0);
+        }
+    }
+}
+
+/**
+ * Process at full resolution (no throttling). For final render on pointer release.
+ */
+export async function processImageFull(
+    path: string,
+    adjustments: AdjustmentState,
+): Promise<ImageData | null> {
+    return executeProcess(path, adjustments, false);
+}
+
+/**
  * Compute histogram from ImageData (inline, no IPC needed).
+ * Uses typed arrays for performance.
  */
 export function computeHistogram(imageData: ImageData): HistogramData {
     const data = imageData.data;
-    const r = new Array(256).fill(0);
-    const g = new Array(256).fill(0);
-    const b = new Array(256).fill(0);
-    const l = new Array(256).fill(0);
+    const r = new Uint32Array(256);
+    const g = new Uint32Array(256);
+    const b = new Uint32Array(256);
+    const l = new Uint32Array(256);
 
     for (let i = 0; i < data.length; i += 4) {
         r[data[i]]++;
         g[data[i + 1]]++;
         b[data[i + 2]]++;
-        const lum = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+        const lum = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2] + 0.5) | 0;
         l[Math.min(lum, 255)]++;
     }
 
-    return { r, g, b, l };
+    return {
+        r: Array.from(r),
+        g: Array.from(g),
+        b: Array.from(b),
+        l: Array.from(l),
+    };
 }

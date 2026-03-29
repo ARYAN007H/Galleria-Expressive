@@ -208,6 +208,7 @@ impl Database {
             ("gps_lon", "ALTER TABLE photos ADD COLUMN gps_lon REAL"),
             ("thumb_path", "ALTER TABLE photos ADD COLUMN thumb_path TEXT"),
             ("date_modified_unix", "ALTER TABLE photos ADD COLUMN date_modified_unix INTEGER NOT NULL DEFAULT 0"),
+            ("edit_params", "ALTER TABLE photos ADD COLUMN edit_params TEXT"),
         ];
 
         for (col, sql) in migrations {
@@ -1028,5 +1029,30 @@ impl Database {
             ],
         )?;
         Ok(())
+    }
+
+    // ── Edit Persistence ──
+
+    pub fn save_edit_params(&self, photo_path: &str, params_json: &str) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE photos SET edit_params = ?1 WHERE path = ?2",
+            rusqlite::params![params_json, photo_path],
+        )?;
+        Ok(())
+    }
+
+    pub fn load_edit_params(&self, photo_path: &str) -> SqlResult<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let result = conn.query_row(
+            "SELECT edit_params FROM photos WHERE path = ?1",
+            [photo_path],
+            |row| row.get::<_, Option<String>>(0),
+        );
+        match result {
+            Ok(params) => Ok(params),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 }

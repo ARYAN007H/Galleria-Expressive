@@ -955,3 +955,33 @@ pub async fn get_system_info() -> Result<SystemInfo, String> {
             .unwrap_or_else(|| "Unknown".to_string()),
     })
 }
+
+// ── Edit Persistence ──
+
+#[tauri::command]
+pub async fn save_edit_params(
+    state: tauri::State<'_, AppState>,
+    photo_path: String,
+    params_json: String,
+) -> Result<(), String> {
+    let db = state.db.lock().unwrap();
+    if let Some(ref db) = *db {
+        db.save_edit_params(&photo_path, &params_json)
+            .map_err(|e| format!("Failed to save edit params: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn load_edit_params(
+    state: tauri::State<'_, AppState>,
+    photo_path: String,
+) -> Result<Option<String>, String> {
+    let db = state.db.lock().unwrap();
+    if let Some(ref db) = *db {
+        db.load_edit_params(&photo_path)
+            .map_err(|e| format!("Failed to load edit params: {}", e))
+    } else {
+        Ok(None)
+    }
+}

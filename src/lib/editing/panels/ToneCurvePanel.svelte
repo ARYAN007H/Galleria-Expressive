@@ -1,5 +1,6 @@
 <script lang="ts">
     import ToneCurve from '../ToneCurve.svelte';
+    import SliderRow from '../SliderRow.svelte';
     import { createEventDispatcher } from 'svelte';
     import type { AdjustmentState, ToneCurvePoint } from '../adjustments';
     import type { HistogramData } from '../imageProcessor';
@@ -116,6 +117,16 @@
                 <button class="preset-btn" on:click={() => applyPreset('strong')}>Strong</button>
                 <button class="preset-btn" on:click={() => applyPreset('faded')}>Faded</button>
             </div>
+
+            <!-- Parametric Sliders -->
+            {#if activeChannel === 'rgb'}
+                <div class="parametric-section">
+                    <SliderRow label="Highlights" value={adjustments.tcParametricHighlights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricHighlights: e.detail })} />
+                    <SliderRow label="Lights" value={adjustments.tcParametricLights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricLights: e.detail })} />
+                    <SliderRow label="Darks" value={adjustments.tcParametricDarks} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricDarks: e.detail })} />
+                    <SliderRow label="Shadows" value={adjustments.tcParametricShadows} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricShadows: e.detail })} />
+                </div>
+            {/if}
         </div>
     {/if}
 </div>
@@ -203,5 +214,14 @@
     .preset-btn:hover {
         background: rgba(255,255,255,0.12);
         color: rgba(255,255,255,0.9);
+    }
+
+    .parametric-section {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 </style>

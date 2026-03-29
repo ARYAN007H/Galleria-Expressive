@@ -2,12 +2,14 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 // ── Editor State (source image cache) ──
 
 pub struct EditorState {
     pub cached_source: Mutex<Option<CachedImage>>,
     pub preview_path: Mutex<String>,
+    pub preview_counter: AtomicU64,
 }
 
 pub struct CachedImage {
@@ -26,6 +28,7 @@ impl Default for EditorState {
         Self {
             cached_source: Mutex::new(None),
             preview_path: Mutex::new(preview_path),
+            preview_counter: AtomicU64::new(0),
         }
     }
 }
@@ -73,6 +76,16 @@ pub struct AdjustmentPayload {
     #[serde(default)]
     pub tone_curve_b: Vec<[f64; 2]>,
 
+    // Parametric Tone Curve
+    #[serde(default)]
+    pub tc_parametric_highlights: f64,
+    #[serde(default)]
+    pub tc_parametric_lights: f64,
+    #[serde(default)]
+    pub tc_parametric_darks: f64,
+    #[serde(default)]
+    pub tc_parametric_shadows: f64,
+
     // HSL (8 colors × 3 properties each — flat arrays)
     #[serde(default)]
     pub hsl_hue: Vec<f64>,    // 8 values, -180 to 180
@@ -104,6 +117,18 @@ pub struct AdjustmentPayload {
     pub cg_blending: f64, // 0-100
     #[serde(default)]
     pub cg_balance: f64,  // -100 to 100
+
+    // Crop & Geometry
+    #[serde(default)]
+    pub crop_x: f64,
+    #[serde(default)]
+    pub crop_y: f64,
+    #[serde(default)]
+    pub crop_width: f64,
+    #[serde(default)]
+    pub crop_height: f64,
+    #[serde(default)]
+    pub crop_rotation: f64,
 
     // Detail
     #[serde(default)]
@@ -170,6 +195,25 @@ pub struct AdjustmentPayload {
     pub cal_blue_hue: f64,     // -100 to 100
     #[serde(default)]
     pub cal_blue_sat: f64,     // -100 to 100
+
+    #[serde(default)]
+    pub masks: Vec<MaskPayload>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct MaskPayload {
+    pub id: String,
+    pub mask_type: String, // "linear_gradient", "radial_gradient", "brush"
+    pub active: bool,
+    pub inverted: bool,
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+    pub radius: f64,
+    pub feather: f64,
+    pub adjustments: Box<AdjustmentPayload>, // Contains local offsets
 }
 
 #[derive(Serialize)]
@@ -186,6 +230,43 @@ pub struct HistogramResult {
     pub g: Vec<u32>,
     pub b: Vec<u32>,
     pub l: Vec<u32>,
+}
+
+impl AdjustmentPayload {
+    #[inline(always)]
+    pub fn apply_delta(&mut self, m: &AdjustmentPayload) {
+        self.temperature += m.temperature;
+        self.tint += m.tint;
+        self.exposure += m.exposure;
+        self.contrast += m.contrast;
+        self.highlights += m.highlights;
+        self.shadows += m.shadows;
+        self.whites += m.whites;
+        self.blacks += m.blacks;
+        self.texture += m.texture;
+        self.clarity += m.clarity;
+        self.dehaze += m.dehaze;
+        self.vibrance += m.vibrance;
+        self.saturation += m.saturation;
+
+        self.sharpen_amount += m.sharpen_amount;
+        self.sharpen_radius += m.sharpen_radius;
+        self.sharpen_detail += m.sharpen_detail;
+        self.sharpen_masking += m.sharpen_masking;
+        self.nr_luminance += m.nr_luminance;
+        self.nr_color += m.nr_color;
+
+        self.cal_red_hue += m.cal_red_hue;
+        self.cal_red_sat += m.cal_red_sat;
+        self.cal_green_hue += m.cal_green_hue;
+        self.cal_green_sat += m.cal_green_sat;
+        self.cal_blue_hue += m.cal_blue_hue;
+        self.cal_blue_sat += m.cal_blue_sat;
+        self.cal_shadow_tint += m.cal_shadow_tint;
+
+        // Skip color grading, tone curve, and hsl arrays for masks right now 
+        // to save math complexity on compositing
+    }
 }
 
 // ── sRGB ↔ Linear conversions ──
@@ -427,15 +508,15 @@ fn build_gaussian_kernel(sigma: f64) -> Vec<f64> {
     kernel
 }
 
-/// Gaussian blur on a single-channel f64 buffer (w×h)
+/// Gaussian blur on a single-channel f64 buffer (w×h) — parallelized with rayon
 fn gaussian_blur_channel(src: &[f64], w: usize, h: usize, sigma: f64) -> Vec<f64> {
     if sigma < 0.3 { return src.to_vec(); }
     let kernel = build_gaussian_kernel(sigma);
     let radius = kernel.len() / 2;
 
-    // Horizontal pass
+    // Horizontal pass — parallelized per row
     let mut temp = vec![0.0f64; w * h];
-    for y in 0..h {
+    temp.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
         for x in 0..w {
             let mut sum = 0.0;
             for k in 0..kernel.len() {
@@ -443,13 +524,13 @@ fn gaussian_blur_channel(src: &[f64], w: usize, h: usize, sigma: f64) -> Vec<f64
                     .max(0).min(w as isize - 1) as usize;
                 sum += src[y * w + sx] * kernel[k];
             }
-            temp[y * w + x] = sum;
+            row[x] = sum;
         }
-    }
+    });
 
-    // Vertical pass
+    // Vertical pass — parallelized per row
     let mut out = vec![0.0f64; w * h];
-    for y in 0..h {
+    out.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
         for x in 0..w {
             let mut sum = 0.0;
             for k in 0..kernel.len() {
@@ -457,9 +538,9 @@ fn gaussian_blur_channel(src: &[f64], w: usize, h: usize, sigma: f64) -> Vec<f64
                     .max(0).min(h as isize - 1) as usize;
                 sum += temp[sy * w + x] * kernel[k];
             }
-            out[y * w + x] = sum;
+            row[x] = sum;
         }
-    }
+    });
     out
 }
 
@@ -745,8 +826,36 @@ fn process_pixels(
     let w = width as usize;
     let h = height as usize;
 
+    // Evaluate Parametric Curve
+    // We create a bezier-like 4-zone modifier. 
+    // Highlights (x=255), Lights (x=190), Darks (x=64), Shadows (x=0)
+    let tc_h = adj.tc_parametric_highlights / 100.0 * 255.0;
+    let tc_l = adj.tc_parametric_lights / 100.0 * 255.0;
+    let tc_d = adj.tc_parametric_darks / 100.0 * 255.0;
+    let tc_s = adj.tc_parametric_shadows / 100.0 * 255.0;
+
+    let mut para_lut = [0f64; 256];
+    for i in 0..256 {
+        let x = i as f64 / 255.0; // 0.0 to 1.0
+        // Basis functions for parametric regions
+        let w_s = (1.0 - (x * 2.0).min(1.0)).powi(2);            // Peaks at 0
+        let w_d = (1.0 - (x * 2.0 - 0.5).abs() * 2.0).max(0.0);  // Peaks at 0.25
+        let w_l = (1.0 - (x * 2.0 - 1.5).abs() * 2.0).max(0.0);  // Peaks at 0.75
+        let w_h = ((x - 0.5) * 2.0).max(0.0).powi(2);            // Peaks at 1.0
+        
+        para_lut[i] = i as f64 + w_s * tc_s + w_d * tc_d + w_l * tc_l + w_h * tc_h;
+        para_lut[i] = para_lut[i].max(0.0).min(255.0);
+    }
+
     // Pre-compute LUTs
-    let lut_rgb = build_curve_lut(&adj.tone_curve_rgb);
+    let mut base_rgb_lut = build_curve_lut(&adj.tone_curve_rgb);
+    // Apply parametric on top of RGB base curve before component curves
+    for i in 0..256 {
+        let pl = para_lut[i as usize] as usize;
+        base_rgb_lut[i] = base_rgb_lut[pl.min(255)];
+    }
+    
+    let lut_rgb = base_rgb_lut;
     let lut_r = build_curve_lut(&adj.tone_curve_r);
     let lut_g = build_curve_lut(&adj.tone_curve_g);
     let lut_b = build_curve_lut(&adj.tone_curve_b);
@@ -1013,15 +1122,26 @@ fn process_pixels(
         g = clamp01(soft_clip_both(g));
         b = clamp01(soft_clip_both(b));
 
-        // 11. Grain (luminance-weighted, seeded)
+        // 11. Grain (luminance-weighted, with size + roughness)
         if adj.grain_amount > 0.001 {
             let lum_grain = 0.299 * r + 0.587 * g + 0.114 * b;
             // More grain in midtones, less in shadows / highlights
             let mid_weight = 1.0 - (2.0 * lum_grain - 1.0).abs();
             let grain_strength = adj.grain_amount / 100.0 * 0.15 * (0.3 + 0.7 * mid_weight);
 
-            // Seeded random based on position
-            let noise = hash_pixel(px as u32, py as u32, 42) * 2.0 - 1.0;
+            // Size: larger grain_size = larger "clumps" (downsample coordinates)
+            let scale = adj.grain_size.max(1.0).min(50.0);
+            let gx = (px as f64 / scale) as u32;
+            let gy = (py as f64 / scale) as u32;
+
+            // Base noise
+            let noise1 = hash_pixel(gx, gy, 42) * 2.0 - 1.0;
+
+            // Roughness: blend in a second higher-frequency noise octave
+            let roughness = adj.grain_roughness / 100.0;
+            let noise2 = hash_pixel(px as u32, py as u32, 137) * 2.0 - 1.0;
+            let noise = noise1 * (1.0 - roughness * 0.5) + noise2 * roughness * 0.5;
+
             let grain_val = noise * grain_strength;
             r += grain_val;
             g += grain_val;
@@ -1141,10 +1261,91 @@ fn apply_vignette(pixels: &mut [u8], width: u32, height: u32, adj: &AdjustmentPa
     });
 }
 
-#[inline(always)]
 fn smoothstep(edge0: f64, edge1: f64, x: f64) -> f64 {
     let t = ((x - edge0) / (edge1 - edge0)).max(0.0).min(1.0);
     t * t * (3.0 - 2.0 * t)
+}
+
+fn apply_crop_and_rotate(
+    src_pixels: Vec<u8>,
+    src_w: u32,
+    src_h: u32,
+    crop_x: f64,
+    crop_y: f64,
+    crop_width: f64,
+    crop_height: f64,
+    rotation_deg: f64,
+) -> (Vec<u8>, u32, u32) {
+    if crop_width >= 1.0 && crop_height >= 1.0 && rotation_deg.abs() < 0.1 {
+        return (src_pixels, src_w, src_h);
+    }
+    
+    let out_w = (src_w as f64 * crop_width) as u32;
+    let out_h = (src_h as f64 * crop_height) as u32;
+    if out_w == 0 || out_h == 0 {
+        return (src_pixels, src_w, src_h);
+    }
+    
+    let mut out_pixels = vec![0u8; (out_w * out_h * 4) as usize];
+    
+    let rad = -rotation_deg * std::f64::consts::PI / 180.0;
+    let cos = rad.cos();
+    let sin = rad.sin();
+    
+    let cx_src = src_w as f64 * (crop_x + crop_width / 2.0);
+    let cy_src = src_h as f64 * (crop_y + crop_height / 2.0);
+    
+    let cx_out = out_w as f64 / 2.0;
+    let cy_out = out_h as f64 / 2.0;
+    
+    // We can parallelize this backwards mapping if it's too slow on large images
+    // but doing it synchronously is usually okay since out_w is bounding box mapped.
+    out_pixels.par_chunks_mut(4 * out_w as usize).enumerate().for_each(|(y, row)| {
+        let dy = y as f64 - cy_out;
+        for x in 0..out_w as usize {
+            let dx = x as f64 - cx_out;
+            let rx = dx * cos - dy * sin;
+            let ry = dx * sin + dy * cos;
+            
+            let sx = cx_src + rx;
+            let sy = cy_src + ry;
+            
+            let out_idx = x * 4;
+            
+            if sx >= 0.0 && sx < (src_w - 1) as f64 && sy >= 0.0 && sy < (src_h - 1) as f64 {
+                let x0 = sx.floor() as usize;
+                let y0 = sy.floor() as usize;
+                let fx = sx - x0 as f64;
+                let fy = sy - y0 as f64;
+                
+                let idx00 = (y0 * src_w as usize + x0) * 4;
+                let idx10 = idx00 + 4;
+                let idx01 = ((y0 + 1) * src_w as usize + x0) * 4;
+                let idx11 = idx01 + 4;
+                
+                for c in 0..4 {
+                    let v00 = src_pixels[idx00 + c] as f64;
+                    let v10 = src_pixels[idx10 + c] as f64;
+                    let v01 = src_pixels[idx01 + c] as f64;
+                    let v11 = src_pixels[idx11 + c] as f64;
+                    
+                    let v = v00 * (1.0 - fx) * (1.0 - fy) 
+                          + v10 * fx * (1.0 - fy) 
+                          + v01 * (1.0 - fx) * fy 
+                          + v11 * fx * fy;
+                          
+                    row[out_idx + c] = v as u8;
+                }
+            } else {
+                row[out_idx] = 0;
+                row[out_idx + 1] = 0;
+                row[out_idx + 2] = 0;
+                row[out_idx + 3] = 0;
+            }
+        }
+    });
+
+    (out_pixels, out_w, out_h)
 }
 
 // ── Tauri Commands ──
@@ -1186,7 +1387,11 @@ pub async fn process_image(
     image_path: String,
     adjustments: AdjustmentPayload,
     preview: bool,
+    #[allow(unused)] max_preview_edge: Option<u32>,
 ) -> Result<ProcessResult, String> {
+    // Increment request counter for stale-check
+    let request_id = state.preview_counter.fetch_add(1, Ordering::SeqCst) + 1;
+
     // Try to use cached source, fallback to loading from disk
     let (source_rgba, src_w, src_h) = {
         let cache = state.cached_source.lock().unwrap();
@@ -1207,33 +1412,76 @@ pub async fn process_image(
         }
     };
 
-    // Resize for preview if needed
+    // Apply Crop and Rotation first
+    let (cropped_rgba, cropped_w, cropped_h) = apply_crop_and_rotate(
+        source_rgba, 
+        src_w, 
+        src_h, 
+        adjustments.crop_x, 
+        adjustments.crop_y, 
+        adjustments.crop_width, 
+        adjustments.crop_height, 
+        adjustments.crop_rotation
+    );
+
+    // Adaptive preview resolution:
+    // - Use max_preview_edge if explicitly provided (600 during drag, 800 on release)
+    // - For very large images (>4MP), use smaller preview during real-time editing
     let (mut pixels, width, height) = if preview {
-        let max_edge = 800u32;
-        if src_w > max_edge || src_h > max_edge {
-            let img_buf = image::RgbaImage::from_raw(src_w, src_h, source_rgba)
+        let default_edge = if cropped_w * cropped_h > 4_000_000 { 600u32 } else { 800u32 };
+        let max_edge = max_preview_edge.unwrap_or(default_edge);
+        if cropped_w > max_edge || cropped_h > max_edge {
+            let img_buf = image::RgbaImage::from_raw(cropped_w, cropped_h, cropped_rgba)
                 .ok_or_else(|| "Failed to create image buffer".to_string())?;
             let dyn_img = image::DynamicImage::ImageRgba8(img_buf);
-            let scale = max_edge as f64 / src_w.max(src_h) as f64;
-            let nw = (src_w as f64 * scale) as u32;
-            let nh = (src_h as f64 * scale) as u32;
+            let scale = max_edge as f64 / cropped_w.max(cropped_h) as f64;
+            let nw = (cropped_w as f64 * scale) as u32;
+            let nh = (cropped_h as f64 * scale) as u32;
             let resized = dyn_img.resize(nw, nh, image::imageops::FilterType::Triangle);
             let rgba = resized.to_rgba8();
             (rgba.clone().into_raw(), rgba.width(), rgba.height())
         } else {
-            (source_rgba, src_w, src_h)
+            (cropped_rgba, cropped_w, cropped_h)
         }
     } else {
-        (source_rgba, src_w, src_h)
+        (cropped_rgba, cropped_w, cropped_h)
     };
 
     let preview_path = state.preview_path.lock().unwrap().clone();
     let adj = adjustments;
+    // Read latest counter before entering blocking task — if it's already stale, skip
+    let latest = state.preview_counter.load(Ordering::SeqCst);
 
     tokio::task::spawn_blocking(move || {
-        process_pixels(&mut pixels, width, height, &adj);
+        if latest != request_id {
+            return Ok(ProcessResult {
+                preview_path,
+                width,
+                height,
+            });
+        }
 
-        // Write to temp file as BMP (fast, lossless, no compression overhead)
+        // 1. Process Base Global Adjustments
+        let mut active_pixels = pixels.clone();
+        process_pixels(&mut active_pixels, width, height, &adj);
+
+        // 2. Process Local Masks
+        for m in &adj.masks {
+            if !m.active { continue; }
+            let mut mask_adj = adj.clone();
+            mask_adj.apply_delta(&m.adjustments);
+
+            // Re-copy pristine source to generate mask output
+            let mut mask_pixels = pixels.clone();
+            process_pixels(&mut mask_pixels, width, height, &mask_adj);
+
+            // Blend mask into active buffer
+            blend_mask_layer(&mut active_pixels, &mask_pixels, m, width, height);
+        }
+
+        pixels = active_pixels;
+
+        // Write to temp file as BMP
         let img_buf = image::RgbaImage::from_raw(width, height, pixels)
             .ok_or_else(|| "Failed to create image buffer".to_string())?;
         img_buf.save_with_format(&preview_path, image::ImageFormat::Bmp)
@@ -1249,10 +1497,83 @@ pub async fn process_image(
     .map_err(|e| format!("Processing error: {}", e))?
 }
 
+fn blend_mask_layer(
+    base: &mut [u8],
+    mask_layer: &[u8],
+    m: &MaskPayload,
+    width: u32,
+    height: u32,
+) {
+    let w = width as f64;
+    let h = height as f64;
+
+    // Gradient Math
+    // x1, y1 -> Start point
+    // x2, y2 -> End point
+    // Coords are [0.0, 1.0] relative to width/height
+    let x1 = m.x1 * w;
+    let y1 = m.y1 * h;
+    let x2 = m.x2 * w;
+    let y2 = m.y2 * h;
+
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let squared_length = dx * dx + dy * dy;
+
+    base.par_chunks_mut(4).enumerate().for_each(|(i, chunk)| {
+        let px = (i % width as usize) as f64;
+        let py = (i / width as usize) as f64;
+
+        let mut alpha = 0.0_f64;
+
+        if m.mask_type == "linear_gradient" {
+            if squared_length < 1e-6 {
+                alpha = 1.0;
+            } else {
+                // Project current pixel onto gradient vector [0.0 to 1.0]
+                let t = ((px - x1) * dx + (py - y1) * dy) / squared_length;
+                alpha = t.max(0.0).min(1.0);
+            }
+        } 
+        else if m.mask_type == "radial_gradient" {
+            // Distance from center x1, y1
+            // Radius is stored in m.radius (normalized to longest edge)
+            let radius_px = m.radius * w.max(h);
+            let dist = ((px - x1).powi(2) + (py - y1).powi(2)).sqrt();
+            let feather_px = m.feather * w.max(h);
+
+            if dist < radius_px - feather_px {
+                alpha = 1.0;
+            } else if dist > radius_px {
+                alpha = 0.0;
+            } else {
+                // Smooth transition within feather area
+                if feather_px > 0.0 {
+                    alpha = 1.0 - (dist - (radius_px - feather_px)) / feather_px;
+                    alpha = smoothstep(0.0, 1.0, alpha); 
+                } else {
+                    alpha = 0.0;
+                }
+            }
+        }
+
+        if m.inverted {
+            alpha = 1.0 - alpha;
+        }
+
+        if alpha > 0.001 {
+            let mi = i * 4;
+            chunk[0] = (chunk[0] as f64 * (1.0 - alpha) + mask_layer[mi] as f64 * alpha) as u8;
+            chunk[1] = (chunk[1] as f64 * (1.0 - alpha) + mask_layer[mi + 1] as f64 * alpha) as u8;
+            chunk[2] = (chunk[2] as f64 * (1.0 - alpha) + mask_layer[mi + 2] as f64 * alpha) as u8;
+        }
+    });
+}
+
 #[tauri::command]
 pub async fn compute_histogram(
     image_data: Vec<u8>,
-    width: u32,
+    _width: u32,
     _height: u32,
 ) -> Result<HistogramResult, String> {
     tokio::task::spawn_blocking(move || {

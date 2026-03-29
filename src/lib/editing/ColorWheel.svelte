@@ -102,6 +102,8 @@
     function handlePointerDown(e: MouseEvent) {
         isDragging = true;
         updateFromMouse(e);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
     }
 
     function handlePointerMove(e: MouseEvent) {
@@ -111,6 +113,8 @@
 
     function handlePointerUp() {
         isDragging = false;
+        window.removeEventListener('mousemove', handlePointerMove);
+        window.removeEventListener('mouseup', handlePointerUp);
     }
 
     function updateFromMouse(e: MouseEvent) {
@@ -134,9 +138,6 @@
         height={SIZE}
         class="wheel-canvas"
         on:mousedown={handlePointerDown}
-        on:mousemove={handlePointerMove}
-        on:mouseup={handlePointerUp}
-        on:mouseleave={handlePointerUp}
     ></canvas>
     <div class="lum-row">
         <span class="lum-label">Lum</span>

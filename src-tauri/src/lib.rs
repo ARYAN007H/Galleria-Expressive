@@ -61,6 +61,8 @@ pub fn run() {
             commands::get_album_photos,
             // Photo editor
             commands::save_edited_photo,
+            commands::save_edit_params,
+            commands::load_edit_params,
             // Image processing
             image_processing::load_editor_source,
             image_processing::unload_editor_source,

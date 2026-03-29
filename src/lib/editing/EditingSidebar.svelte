@@ -9,6 +9,8 @@
     import LensPanel from './panels/LensPanel.svelte';
     import EffectsPanel from './panels/EffectsPanel.svelte';
     import CalibrationPanel from './panels/CalibrationPanel.svelte';
+    import HistoryPanel from './panels/HistoryPanel.svelte';
+    import SnapshotPanel from './panels/SnapshotPanel.svelte';
     import {
         type AdjustmentState,
         type FilterPreset,
@@ -31,6 +33,19 @@
     }>();
 
     function onPanelChange(e: CustomEvent<Partial<AdjustmentState>>) {
+        dispatch('change', e.detail);
+    }
+
+    function onHistoryRestore(e: CustomEvent<AdjustmentState>) {
+        // Full state from history — emit as change
+        if (e.detail && Object.keys(e.detail).length > 0) {
+            dispatch('change', e.detail);
+        } else {
+            dispatch('resetAll');
+        }
+    }
+
+    function onSnapshotRestore(e: CustomEvent<AdjustmentState>) {
         dispatch('change', e.detail);
     }
 
@@ -94,6 +109,8 @@
         <LensPanel {adjustments} on:change={onPanelChange} />
         <EffectsPanel {adjustments} on:change={onPanelChange} />
         <CalibrationPanel {adjustments} on:change={onPanelChange} />
+        <HistoryPanel on:restore={onHistoryRestore} />
+        <SnapshotPanel {adjustments} on:restore={onSnapshotRestore} />
     </div>
 
     <!-- Bottom Actions -->

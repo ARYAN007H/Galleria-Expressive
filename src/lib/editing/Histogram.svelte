@@ -35,6 +35,8 @@
                 if (ch[i] > maxVal) maxVal = ch[i];
             }
         }
+        // Add some headroom
+        maxVal *= 1.1;
 
         const drawChannel = (channel: number[], color: string, alpha: number) => {
             ctx.fillStyle = color;
@@ -53,16 +55,18 @@
             ctx.fill();
         };
 
-        // Draw fills
-        if (showR) drawChannel(d.r, '#ef4444', 0.4);
-        if (showG) drawChannel(d.g, '#22c55e', 0.4);
-        if (showB) drawChannel(d.b, '#3b82f6', 0.4);
+        // Draw fills with screen blending so overlapping colors form CYM 
+        ctx.globalCompositeOperation = 'screen';
+        if (showR) drawChannel(d.r, '#ff0000', 0.6);
+        if (showG) drawChannel(d.g, '#00ff00', 0.6);
+        if (showB) drawChannel(d.b, '#0000ff', 0.6);
 
         // Luminosity as line on top
+        ctx.globalCompositeOperation = 'source-over';
         if (showL) {
-            ctx.globalAlpha = 0.8;
+            ctx.globalAlpha = 0.9;
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             for (let i = 0; i < 256; i++) {
                 const x = (i / 255) * width;
@@ -80,7 +84,7 @@
         const blackClip = (d.r[0] + d.g[0] + d.b[0]) / 3;
         if (blackClip > maxVal * 0.05) {
             ctx.fillStyle = '#3b82f6';
-            ctx.globalAlpha = Math.min(blackClip / maxVal, 1.0) * 0.7;
+            ctx.globalAlpha = Math.min(blackClip / maxVal, 1.0) * 0.8;
             ctx.fillRect(0, 0, 3, height);
         }
 
@@ -88,7 +92,7 @@
         const whiteClip = (d.r[255] + d.g[255] + d.b[255]) / 3;
         if (whiteClip > maxVal * 0.05) {
             ctx.fillStyle = '#ef4444';
-            ctx.globalAlpha = Math.min(whiteClip / maxVal, 1.0) * 0.7;
+            ctx.globalAlpha = Math.min(whiteClip / maxVal, 1.0) * 0.8;
             ctx.fillRect(width - 3, 0, 3, height);
         }
 
