@@ -9,6 +9,7 @@
     import type { Photo } from "../lib/store";
     import EditingSidebar from "../lib/editing/EditingSidebar.svelte";
     import CropOverlay from "../lib/editing/CropOverlay.svelte";
+    import MaskingOverlay from "../lib/editing/MaskingOverlay.svelte";
     import Histogram from "../lib/editing/Histogram.svelte";
     import ExportDialog from "../lib/editing/ExportDialog.svelte";
     import {
@@ -82,8 +83,21 @@
     let panStartPanY = 0;
 
     // Tool strip
-    type EditorTool = 'adjust' | 'crop';
+    // Tool strip
+    type EditorTool = 'adjust' | 'crop' | 'mask';
     let activeTool: EditorTool = 'adjust';
+    
+    // Mask Tool State
+    let activeMaskId: string | null = null;
+    let activeNewType: string | null = null;
+
+    function switchTool(tool: EditorTool) {
+        activeTool = tool;
+        if (tool !== 'mask') {
+            activeMaskId = null;
+            activeNewType = null;
+        }
+    }
 
     // Panel visibility
     let canvasClientWidth = 0;
@@ -336,14 +350,38 @@
     }
 
     // ── Adjustment Handlers ──
+    let historyDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Scrub handler — fires continuously during slider drag.
+     * Updates adjustment state and triggers low-res preview.
+     * NO history recording (too expensive per-frame).
+     */
+    function onAdjustmentScrub(e: CustomEvent<Partial<AdjustmentState>>) {
+        adjustments = { ...adjustments, ...e.detail };
+        hasChanges = true;
+        triggerProcess(true, true); // preview, isDrag=true for adaptive resolution
+    }
+
+    /**
+     * Change handler — fires on slider release (commit point).
+     * Updates adjustment state, triggers full-res processing,
+     * and records a debounced history entry.
+     */
     function onAdjustmentChange(e: CustomEvent<Partial<AdjustmentState>>) {
         const changedKeys = Object.keys(e.detail);
         const label = changedKeys.length === 1 ? changedKeys[0] : 'Multiple adjustments';
         adjustments = { ...adjustments, ...e.detail };
         hasChanges = true;
-        recordChange(label, adjustments);
-        triggerProcess(true, true); // isDrag = true for adaptive resolution
-        if (activeTool === 'crop') triggerProcess(true);
+
+        // Debounced history: coalesce rapid commits (e.g. double-click reset)
+        if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+        historyDebounceTimer = setTimeout(() => {
+            recordChange(label, adjustments);
+            historyDebounceTimer = null;
+        }, 150);
+
+        triggerProcess(true, false); // preview but NOT drag → 800px
     }
 
     function onResetAll() {
@@ -493,7 +531,9 @@
     }
 
     function handlePointerUp() {
-        if (hasChanges) triggerProcess(false, false); // full res, not drag
+        // On global pointer-up, if there are pending changes, trigger
+        // a final full-quality preview render (not full-res, just bigger preview)
+        if (hasChanges) triggerProcess(true, false); // 800px preview, not drag
     }
 
     // ── Auto-scroll filmstrip to current photo ──
@@ -565,6 +605,16 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg>
             </button>
             <div class="toolbar-sep"></div>
+            <button class="tool-btn" class:active={activeTool === 'adjust'} on:click={() => switchTool('adjust')} title="Adjustments">
+                <span>≡</span>
+            </button>
+            <button class="tool-btn" class:active={activeTool === 'mask'} on:click={() => switchTool('mask')} title="Masking (Local Adjustments)">
+                <span>◎</span>
+            </button>
+            <button class="tool-btn" class:active={activeTool === 'crop'} on:click={() => switchTool('crop')} title="Crop & Straighten">
+                <span>◩</span>
+            </button>
+            <div class="toolbar-sep"></div>
             <button class="tool-btn accent" on:click={handleSave} disabled={!hasChanges || saving}>
                 {saving ? "Saving…" : "Save Copy"}
             </button>
@@ -621,17 +671,38 @@
                     class:visible={showClippingWarnings}
                 ></canvas>
 
-                {#if activeTool === 'crop'}
-                    <CropOverlay
-                        bind:cropX={adjustments.cropX}
-                        bind:cropY={adjustments.cropY}
-                        bind:cropWidth={adjustments.cropWidth}
-                        bind:cropHeight={adjustments.cropHeight}
-                        bind:cropRotation={adjustments.cropRotation}
-                        previewWidth={canvasClientWidth}
-                        previewHeight={canvasClientHeight}
-                        on:change={() => { hasChanges = true; }}
-                    />
+                {#if activeTool === 'crop' && zoomLevel === 1}
+                    <div class="overlay-layer">
+                        <CropOverlay
+                            bind:cropX={adjustments.cropX}
+                            bind:cropY={adjustments.cropY}
+                            bind:cropWidth={adjustments.cropWidth}
+                            bind:cropHeight={adjustments.cropHeight}
+                            cropRotation={adjustments.cropRotation}
+                            previewWidth={canvasClientWidth}
+                            previewHeight={canvasClientHeight}
+                            on:change={() => triggerProcess(true)}
+                        />
+                    </div>
+                {/if}
+
+                {#if activeTool === 'mask'}
+                    <div class="overlay-layer">
+                        <MaskingOverlay
+                            masks={adjustments.masks || []}
+                            bind:activeMaskId
+                            bind:activeNewType
+                            previewWidth={canvasClientWidth}
+                            previewHeight={canvasClientHeight}
+                            on:select={(e) => activeMaskId = e.detail}
+                            on:change={() => triggerProcess(true, true)}
+                            on:changeEnd={() => triggerProcess(false, false)}
+                            on:addMask={(e) => {
+                                adjustments.masks = [...(adjustments.masks || []), e.detail];
+                                triggerProcess(true, true);
+                            }}
+                        />
+                    </div>
                 {/if}
             </div>
 
@@ -666,7 +737,11 @@
                     {adjustments}
                     {histogramData}
                     {showOriginal}
+                    {activeTool}
+                    bind:activeMaskId
+                    bind:activeNewType
                     on:change={onAdjustmentChange}
+                    on:scrub={onAdjustmentScrub}
                     on:resetAll={onResetAll}
                     on:beforeAfter={onBeforeAfter}
                 />

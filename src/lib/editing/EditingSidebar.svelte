@@ -11,6 +11,7 @@
     import CalibrationPanel from './panels/CalibrationPanel.svelte';
     import HistoryPanel from './panels/HistoryPanel.svelte';
     import SnapshotPanel from './panels/SnapshotPanel.svelte';
+    import MaskingPanel from './panels/MaskingPanel.svelte';
     import {
         type AdjustmentState,
         type FilterPreset,
@@ -23,17 +24,29 @@
     export let adjustments: AdjustmentState;
     export let histogramData: HistogramData | null = null;
     export let showOriginal: boolean = false;
+    export let activeTool: string = 'adjust';
+    
+    // Mask Tool Bindings
+    export let activeMaskId: string | null = null;
+    export let activeNewType: string | null = null;
 
     const dispatch = createEventDispatcher<{
         change: Partial<AdjustmentState>;
+        scrub: Partial<AdjustmentState>;
         resetAll: void;
         beforeAfter: boolean;
         copySettings: void;
         pasteSettings: void;
+        maskSelect: any;
+        activeNewType: any;
     }>();
 
     function onPanelChange(e: CustomEvent<Partial<AdjustmentState>>) {
         dispatch('change', e.detail);
+    }
+
+    function onPanelScrub(e: CustomEvent<Partial<AdjustmentState>>) {
+        dispatch('scrub', e.detail);
     }
 
     function onHistoryRestore(e: CustomEvent<AdjustmentState>) {
@@ -101,16 +114,27 @@
 
     <!-- Scrollable panels -->
     <div class="panels-scroll">
-        <BasicPanel {adjustments} expanded={true} on:change={onPanelChange} />
-        <ToneCurvePanel {adjustments} {histogramData} on:change={onPanelChange} />
-        <HSLPanel {adjustments} on:change={onPanelChange} />
-        <ColorGradingPanel {adjustments} on:change={onPanelChange} />
-        <DetailPanel {adjustments} on:change={onPanelChange} />
-        <LensPanel {adjustments} on:change={onPanelChange} />
-        <EffectsPanel {adjustments} on:change={onPanelChange} />
-        <CalibrationPanel {adjustments} on:change={onPanelChange} />
-        <HistoryPanel on:restore={onHistoryRestore} />
-        <SnapshotPanel {adjustments} on:restore={onSnapshotRestore} />
+        {#if activeTool === 'mask'}
+            <MaskingPanel
+                {adjustments}
+                bind:activeMaskId
+                bind:activeNewType
+                on:select={(e) => dispatch('maskSelect', e.detail)}
+                on:activeNewType={(e) => dispatch('activeNewType', e.detail)}
+                on:change={onPanelChange}
+            />
+        {:else}
+            <BasicPanel {adjustments} expanded={true} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <ToneCurvePanel {adjustments} {histogramData} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <HSLPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <ColorGradingPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <DetailPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <LensPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <EffectsPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <CalibrationPanel {adjustments} on:change={onPanelChange} on:scrub={onPanelScrub} />
+            <HistoryPanel on:restore={onHistoryRestore} />
+            <SnapshotPanel {adjustments} on:restore={onSnapshotRestore} />
+        {/if}
     </div>
 
     <!-- Bottom Actions -->

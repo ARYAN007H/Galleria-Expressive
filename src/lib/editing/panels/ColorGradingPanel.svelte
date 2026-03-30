@@ -7,7 +7,7 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function onWheelChange(key: 'cgShadows' | 'cgMidtones' | 'cgHighlights', e: CustomEvent<ColorWheelState>) {
         dispatch('change', { [key]: e.detail });
@@ -46,8 +46,8 @@
             </div>
 
             <div class="blend-sliders">
-                <SliderRow label="Blending" value={adjustments.cgBlending} min={0} max={100} step={1} defaultValue={50} on:change={(e) => dispatch('change', { cgBlending: e.detail })} />
-                <SliderRow label="Balance" value={adjustments.cgBalance} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => dispatch('change', { cgBalance: e.detail })} />
+                <SliderRow label="Blending" value={adjustments.cgBlending} min={0} max={100} step={1} defaultValue={50} on:change={(e) => dispatch('change', { cgBlending: e.detail })} on:scrub={(e) => dispatch('scrub', { cgBlending: e.detail })} />
+                <SliderRow label="Balance" value={adjustments.cgBalance} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => dispatch('change', { cgBalance: e.detail })} on:scrub={(e) => dispatch('scrub', { cgBalance: e.detail })} />
             </div>
         </div>
     {/if}

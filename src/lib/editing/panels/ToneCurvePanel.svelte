@@ -9,7 +9,7 @@
     export let histogramData: HistogramData | null = null;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     let activeChannel: 'rgb' | 'r' | 'g' | 'b' = 'rgb';
     $: activeChannel = adjustments.toneCurveChannel;
@@ -121,10 +121,10 @@
             <!-- Parametric Sliders -->
             {#if activeChannel === 'rgb'}
                 <div class="parametric-section">
-                    <SliderRow label="Highlights" value={adjustments.tcParametricHighlights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricHighlights: e.detail })} />
-                    <SliderRow label="Lights" value={adjustments.tcParametricLights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricLights: e.detail })} />
-                    <SliderRow label="Darks" value={adjustments.tcParametricDarks} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricDarks: e.detail })} />
-                    <SliderRow label="Shadows" value={adjustments.tcParametricShadows} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricShadows: e.detail })} />
+                    <SliderRow label="Highlights" value={adjustments.tcParametricHighlights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricHighlights: e.detail })} on:scrub={(e) => dispatch('scrub', { tcParametricHighlights: e.detail })} />
+                    <SliderRow label="Lights" value={adjustments.tcParametricLights} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricLights: e.detail })} on:scrub={(e) => dispatch('scrub', { tcParametricLights: e.detail })} />
+                    <SliderRow label="Darks" value={adjustments.tcParametricDarks} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricDarks: e.detail })} on:scrub={(e) => dispatch('scrub', { tcParametricDarks: e.detail })} />
+                    <SliderRow label="Shadows" value={adjustments.tcParametricShadows} min={-100} max={100} defaultValue={0} on:change={(e) => dispatch('change', { tcParametricShadows: e.detail })} on:scrub={(e) => dispatch('scrub', { tcParametricShadows: e.detail })} />
                 </div>
             {/if}
         </div>

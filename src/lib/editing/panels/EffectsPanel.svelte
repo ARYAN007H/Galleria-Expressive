@@ -6,10 +6,14 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function update(key: keyof AdjustmentState, e: CustomEvent<number>) {
         dispatch('change', { [key]: e.detail });
+    }
+
+    function scrub(key: keyof AdjustmentState, e: CustomEvent<number>) {
+        dispatch('scrub', { [key]: e.detail });
     }
 
     function resetPanel() {
@@ -37,16 +41,16 @@
     {#if expanded}
         <div class="panel-body" transition:slide|local={{ duration: 250 }}>
             <div class="group-label">Post-Crop Vignette</div>
-            <SliderRow label="Amount" value={adjustments.vignetteAmount} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteAmount', e)} />
-            <SliderRow label="Midpoint" value={adjustments.vignetteMidpoint} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('vignetteMidpoint', e)} />
-            <SliderRow label="Roundness" value={adjustments.vignetteRoundness} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteRoundness', e)} />
-            <SliderRow label="Feather" value={adjustments.vignetteFeather} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('vignetteFeather', e)} />
-            <SliderRow label="Highlights" value={adjustments.vignetteHighlights} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteHighlights', e)} />
+            <SliderRow label="Amount" value={adjustments.vignetteAmount} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteAmount', e)} on:scrub={(e) => scrub('vignetteAmount', e)} />
+            <SliderRow label="Midpoint" value={adjustments.vignetteMidpoint} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('vignetteMidpoint', e)} on:scrub={(e) => scrub('vignetteMidpoint', e)} />
+            <SliderRow label="Roundness" value={adjustments.vignetteRoundness} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteRoundness', e)} on:scrub={(e) => scrub('vignetteRoundness', e)} />
+            <SliderRow label="Feather" value={adjustments.vignetteFeather} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('vignetteFeather', e)} on:scrub={(e) => scrub('vignetteFeather', e)} />
+            <SliderRow label="Highlights" value={adjustments.vignetteHighlights} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('vignetteHighlights', e)} on:scrub={(e) => scrub('vignetteHighlights', e)} />
 
             <div class="group-label" style="margin-top: 12px;">Grain</div>
-            <SliderRow label="Amount" value={adjustments.grainAmount} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('grainAmount', e)} />
-            <SliderRow label="Size" value={adjustments.grainSize} min={1} max={50} step={1} defaultValue={25} on:change={(e) => update('grainSize', e)} />
-            <SliderRow label="Roughness" value={adjustments.grainRoughness} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('grainRoughness', e)} />
+            <SliderRow label="Amount" value={adjustments.grainAmount} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('grainAmount', e)} on:scrub={(e) => scrub('grainAmount', e)} />
+            <SliderRow label="Size" value={adjustments.grainSize} min={1} max={50} step={1} defaultValue={25} on:change={(e) => update('grainSize', e)} on:scrub={(e) => scrub('grainSize', e)} />
+            <SliderRow label="Roughness" value={adjustments.grainRoughness} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('grainRoughness', e)} on:scrub={(e) => scrub('grainRoughness', e)} />
         </div>
     {/if}
 </div>

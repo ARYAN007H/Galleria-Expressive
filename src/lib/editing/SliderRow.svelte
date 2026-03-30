@@ -9,7 +9,7 @@
     export let defaultValue: number = 0;
     export let icon: string = '';
 
-    const dispatch = createEventDispatcher<{ change: number }>();
+    const dispatch = createEventDispatcher<{ change: number; scrub: number }>();
 
     let isDragging = false;
     let showBubble = false;
@@ -25,9 +25,14 @@
         const v = parseFloat(target.value);
         if (!isNaN(v)) {
             value = Math.max(min, Math.min(max, v));
-            dispatch('change', value);
+            // During active drag, emit scrub (lightweight, no history)
+            // The browser's native input event already throttles to ~60fps
+            if (isDragging) {
+                dispatch('scrub', value);
+            } else {
+                dispatch('change', value);
+            }
         }
-        isDragging = true;
         showBubble = true;
     }
 
@@ -39,6 +44,7 @@
     function handlePointerUp() {
         isDragging = false;
         setTimeout(() => { showBubble = false; }, 200);
+        // Commit event: triggers history push + full-res render
         dispatch('change', value);
     }
 

@@ -7,7 +7,7 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     let viewMode: 'hue' | 'saturation' | 'luminance' = 'hue';
 
@@ -16,6 +16,13 @@
             i === colorIdx ? { ...h, [prop]: value } : { ...h }
         );
         dispatch('change', { hsl: updated });
+    }
+
+    function scrubHSL(colorIdx: number, prop: 'hue' | 'saturation' | 'luminance', value: number) {
+        const updated = adjustments.hsl.map((h, i) =>
+            i === colorIdx ? { ...h, [prop]: value } : { ...h }
+        );
+        dispatch('scrub', { hsl: updated });
     }
 
     function resetPanel() {
@@ -61,6 +68,7 @@
                         step={1}
                         defaultValue={0}
                         on:change={(e) => updateHSL(idx, viewMode, e.detail)}
+                        on:scrub={(e) => scrubHSL(idx, viewMode, e.detail)}
                     />
                 </div>
             {/each}

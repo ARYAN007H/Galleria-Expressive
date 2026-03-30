@@ -6,10 +6,14 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function update(key: keyof AdjustmentState, e: CustomEvent<number>) {
         dispatch('change', { [key]: e.detail });
+    }
+
+    function scrub(key: keyof AdjustmentState, e: CustomEvent<number>) {
+        dispatch('scrub', { [key]: e.detail });
     }
 
     function resetPanel() {
@@ -37,20 +41,20 @@
     {#if expanded}
         <div class="panel-body" transition:slide|local={{ duration: 250 }}>
             <div class="group-label">Sharpening</div>
-            <SliderRow label="Amount" value={adjustments.sharpenAmount} min={0} max={150} step={1} defaultValue={0} on:change={(e) => update('sharpenAmount', e)} />
-            <SliderRow label="Radius" value={adjustments.sharpenRadius} min={0.5} max={3.0} step={0.1} defaultValue={1.0} on:change={(e) => update('sharpenRadius', e)} />
-            <SliderRow label="Detail" value={adjustments.sharpenDetail} min={0} max={100} step={1} defaultValue={25} on:change={(e) => update('sharpenDetail', e)} />
-            <SliderRow label="Masking" value={adjustments.sharpenMasking} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('sharpenMasking', e)} />
+            <SliderRow label="Amount" value={adjustments.sharpenAmount} min={0} max={150} step={1} defaultValue={0} on:change={(e) => update('sharpenAmount', e)} on:scrub={(e) => scrub('sharpenAmount', e)} />
+            <SliderRow label="Radius" value={adjustments.sharpenRadius} min={0.5} max={3.0} step={0.1} defaultValue={1.0} on:change={(e) => update('sharpenRadius', e)} on:scrub={(e) => scrub('sharpenRadius', e)} />
+            <SliderRow label="Detail" value={adjustments.sharpenDetail} min={0} max={100} step={1} defaultValue={25} on:change={(e) => update('sharpenDetail', e)} on:scrub={(e) => scrub('sharpenDetail', e)} />
+            <SliderRow label="Masking" value={adjustments.sharpenMasking} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('sharpenMasking', e)} on:scrub={(e) => scrub('sharpenMasking', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Noise Reduction — Luminance</div>
-            <SliderRow label="Amount" value={adjustments.nrLuminance} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('nrLuminance', e)} />
-            <SliderRow label="Detail" value={adjustments.nrLumDetail} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrLumDetail', e)} />
-            <SliderRow label="Contrast" value={adjustments.nrLumContrast} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrLumContrast', e)} />
+            <SliderRow label="Amount" value={adjustments.nrLuminance} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('nrLuminance', e)} on:scrub={(e) => scrub('nrLuminance', e)} />
+            <SliderRow label="Detail" value={adjustments.nrLumDetail} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrLumDetail', e)} on:scrub={(e) => scrub('nrLumDetail', e)} />
+            <SliderRow label="Contrast" value={adjustments.nrLumContrast} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrLumContrast', e)} on:scrub={(e) => scrub('nrLumContrast', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Noise Reduction — Color</div>
-            <SliderRow label="Amount" value={adjustments.nrColor} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('nrColor', e)} />
-            <SliderRow label="Detail" value={adjustments.nrColorDetail} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrColorDetail', e)} />
-            <SliderRow label="Smoothness" value={adjustments.nrColorSmooth} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrColorSmooth', e)} />
+            <SliderRow label="Amount" value={adjustments.nrColor} min={0} max={100} step={1} defaultValue={0} on:change={(e) => update('nrColor', e)} on:scrub={(e) => scrub('nrColor', e)} />
+            <SliderRow label="Detail" value={adjustments.nrColorDetail} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrColorDetail', e)} on:scrub={(e) => scrub('nrColorDetail', e)} />
+            <SliderRow label="Smoothness" value={adjustments.nrColorSmooth} min={0} max={100} step={1} defaultValue={50} on:change={(e) => update('nrColorSmooth', e)} on:scrub={(e) => scrub('nrColorSmooth', e)} />
         </div>
     {/if}
 </div>

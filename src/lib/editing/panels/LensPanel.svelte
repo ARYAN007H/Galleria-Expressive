@@ -6,10 +6,14 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function update(key: keyof AdjustmentState, e: CustomEvent<number>) {
         dispatch('change', { [key]: e.detail });
+    }
+
+    function scrub(key: keyof AdjustmentState, e: CustomEvent<number>) {
+        dispatch('scrub', { [key]: e.detail });
     }
 
     function resetPanel() {
@@ -34,12 +38,12 @@
     </button>
     {#if expanded}
         <div class="panel-body" transition:slide|local={{ duration: 250 }}>
-            <SliderRow label="Distortion" value={adjustments.lensDistortion} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensDistortion', e)} />
-            <SliderRow label="Vignetting" value={adjustments.lensVignetting} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensVignetting', e)} />
+            <SliderRow label="Distortion" value={adjustments.lensDistortion} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensDistortion', e)} on:scrub={(e) => scrub('lensDistortion', e)} />
+            <SliderRow label="Vignetting" value={adjustments.lensVignetting} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensVignetting', e)} on:scrub={(e) => scrub('lensVignetting', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Chromatic Aberration</div>
-            <SliderRow label="Red/Cyan" value={adjustments.lensCaRed} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensCaRed', e)} />
-            <SliderRow label="Blue/Yellow" value={adjustments.lensCaBlue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensCaBlue', e)} />
+            <SliderRow label="Red/Cyan" value={adjustments.lensCaRed} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensCaRed', e)} on:scrub={(e) => scrub('lensCaRed', e)} />
+            <SliderRow label="Blue/Yellow" value={adjustments.lensCaBlue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('lensCaBlue', e)} on:scrub={(e) => scrub('lensCaBlue', e)} />
         </div>
     {/if}
 </div>

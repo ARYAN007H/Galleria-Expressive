@@ -120,6 +120,85 @@ const invokeHandlers: Record<string, InvokeHandler> = {
         const q = (args?.query || '').toLowerCase()
         return demoPhotos.filter(p => p.filename.toLowerCase().includes(q) || p.folderRel.toLowerCase().includes(q))
     },
+    'process_image': (args: any) => {
+        // Fallback Javascript pixel processor for browser testing!
+        const adj = args.adjustments;
+        const w = 600;
+        const h = 400;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        
+        // Fill base image (placeholder gradient)
+        const lg = ctx.createLinearGradient(0, 0, w, h);
+        lg.addColorStop(0, '#4a90e2');
+        lg.addColorStop(0.5, '#50e3c2');
+        lg.addColorStop(1, '#b8e986');
+        ctx.fillStyle = lg;
+        ctx.fillRect(0, 0, w, h);
+
+        // Apply text to identify mock
+        ctx.fillStyle = 'white';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('BROWSER MOCK EDITING', 40, 40);
+
+        // Get pixels
+        const idata = ctx.getImageData(0, 0, w, h);
+        const data = idata.data;
+        
+        let exposure = adj.exposure || 0;
+        let contrast = (adj.contrast || 0) / 100.0;
+        let temp = (adj.temperature || 6500) - 6500;
+        let tempShift = temp / 20000; 
+
+        // Apply basic pixel math
+        for (let i = 0; i < data.length; i += 4) {
+             let r = data[i] / 255.0;
+             let g = data[i+1] / 255.0;
+             let b = data[i+2] / 255.0;
+
+             // Exposure
+             let mult = Math.pow(2.0, exposure);
+             r *= mult; g *= mult; b *= mult;
+
+             // Temp
+             r += tempShift;
+             b -= tempShift;
+
+             // Contrast
+             if (Math.abs(contrast) > 0.001) {
+                 let pivot = 0.5;
+                 r = r > 0 ? Math.pow(r / pivot, 1.0 + contrast) * pivot : r;
+                 g = g > 0 ? Math.pow(g / pivot, 1.0 + contrast) * pivot : g;
+                 b = b > 0 ? Math.pow(b / pivot, 1.0 + contrast) * pivot : b;
+             }
+
+             // Desaturate slightly if negative sat, etc
+             let sat = (adj.saturation || 0) / 100.0;
+             if (sat !== 0) {
+                 let lum = 0.3*r + 0.59*g + 0.11*b;
+                 r = lum + (r - lum) * (1.0 + sat);
+                 g = lum + (g - lum) * (1.0 + sat);
+                 b = lum + (b - lum) * (1.0 + sat);
+             }
+
+             data[i] = Math.max(0, Math.min(255, r * 255));
+             data[i+1] = Math.max(0, Math.min(255, g * 255));
+             data[i+2] = Math.max(0, Math.min(255, b * 255));
+        }
+
+        ctx.putImageData(idata, 0, 0);
+
+        // Convert to data URL for immediate rendering
+        const url = canvas.toDataURL('image/jpeg', 0.8);
+
+        return {
+            previewPath: url,
+            width: w,
+            height: h
+        };
+    }
 }
 
 export async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
@@ -134,9 +213,9 @@ export async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
 }
 
 export function mockConvertFileSrc(path: string): string {
-    // In browser mode, if path is already an HTTP URL, return as-is
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-        return path
+    // In browser mode, if path is already an HTTP URL or data URI, return as-is
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
     }
     // For local paths, return a placeholder
     const seed = path.replace(/[^a-zA-Z0-9]/g, '').slice(-8) || 'default'

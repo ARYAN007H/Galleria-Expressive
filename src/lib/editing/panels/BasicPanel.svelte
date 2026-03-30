@@ -6,10 +6,14 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = true;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function update(key: keyof AdjustmentState, e: CustomEvent<number>) {
         dispatch('change', { [key]: e.detail });
+    }
+
+    function scrub(key: keyof AdjustmentState, e: CustomEvent<number>) {
+        dispatch('scrub', { [key]: e.detail });
     }
 
     function resetPanel() {
@@ -34,25 +38,25 @@
         <div class="panel-body" transition:slide|local={{ duration: 250 }}>
             <div class="slider-group">
                 <div class="group-label">White Balance</div>
-                <SliderRow label="Temperature" icon="🌡" value={adjustments.temperature} min={2000} max={50000} step={100} defaultValue={6500} on:change={(e) => update('temperature', e)} />
-                <SliderRow label="Tint" icon="◆" value={adjustments.tint} min={-150} max={150} step={1} defaultValue={0} on:change={(e) => update('tint', e)} />
+                <SliderRow label="Temperature" icon="🌡" value={adjustments.temperature} min={2000} max={50000} step={100} defaultValue={6500} on:change={(e) => update('temperature', e)} on:scrub={(e) => scrub('temperature', e)} />
+                <SliderRow label="Tint" icon="◆" value={adjustments.tint} min={-150} max={150} step={1} defaultValue={0} on:change={(e) => update('tint', e)} on:scrub={(e) => scrub('tint', e)} />
             </div>
             <div class="slider-group">
                 <div class="group-label">Tone</div>
-                <SliderRow label="Exposure" icon="☀" value={adjustments.exposure} min={-5} max={5} step={0.01} defaultValue={0} on:change={(e) => update('exposure', e)} />
-                <SliderRow label="Contrast" icon="◐" value={adjustments.contrast} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('contrast', e)} />
-                <SliderRow label="Highlights" icon="◐" value={adjustments.highlights} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('highlights', e)} />
-                <SliderRow label="Shadows" icon="◑" value={adjustments.shadows} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('shadows', e)} />
-                <SliderRow label="Whites" icon="○" value={adjustments.whites} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('whites', e)} />
-                <SliderRow label="Blacks" icon="●" value={adjustments.blacks} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('blacks', e)} />
+                <SliderRow label="Exposure" icon="☀" value={adjustments.exposure} min={-5} max={5} step={0.01} defaultValue={0} on:change={(e) => update('exposure', e)} on:scrub={(e) => scrub('exposure', e)} />
+                <SliderRow label="Contrast" icon="◐" value={adjustments.contrast} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('contrast', e)} on:scrub={(e) => scrub('contrast', e)} />
+                <SliderRow label="Highlights" icon="◐" value={adjustments.highlights} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('highlights', e)} on:scrub={(e) => scrub('highlights', e)} />
+                <SliderRow label="Shadows" icon="◑" value={adjustments.shadows} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('shadows', e)} on:scrub={(e) => scrub('shadows', e)} />
+                <SliderRow label="Whites" icon="○" value={adjustments.whites} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('whites', e)} on:scrub={(e) => scrub('whites', e)} />
+                <SliderRow label="Blacks" icon="●" value={adjustments.blacks} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('blacks', e)} on:scrub={(e) => scrub('blacks', e)} />
             </div>
             <div class="slider-group">
                 <div class="group-label">Presence</div>
-                <SliderRow label="Texture" icon="▧" value={adjustments.texture} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('texture', e)} />
-                <SliderRow label="Clarity" icon="◈" value={adjustments.clarity} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('clarity', e)} />
-                <SliderRow label="Dehaze" icon="▽" value={adjustments.dehaze} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('dehaze', e)} />
-                <SliderRow label="Vibrance" icon="◇" value={adjustments.vibrance} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vibrance', e)} />
-                <SliderRow label="Saturation" icon="◈" value={adjustments.saturation} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('saturation', e)} />
+                <SliderRow label="Texture" icon="▧" value={adjustments.texture} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('texture', e)} on:scrub={(e) => scrub('texture', e)} />
+                <SliderRow label="Clarity" icon="◈" value={adjustments.clarity} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('clarity', e)} on:scrub={(e) => scrub('clarity', e)} />
+                <SliderRow label="Dehaze" icon="▽" value={adjustments.dehaze} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('dehaze', e)} on:scrub={(e) => scrub('dehaze', e)} />
+                <SliderRow label="Vibrance" icon="◇" value={adjustments.vibrance} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('vibrance', e)} on:scrub={(e) => scrub('vibrance', e)} />
+                <SliderRow label="Saturation" icon="◈" value={adjustments.saturation} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('saturation', e)} on:scrub={(e) => scrub('saturation', e)} />
             </div>
         </div>
     {/if}

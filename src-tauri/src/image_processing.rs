@@ -219,9 +219,10 @@ pub struct MaskPayload {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessResult {
-    pub preview_path: String,  // temp file path for frontend to load
+    pub preview_path: String,  // temp file path for frontend to load (fallback)
     pub width: u32,
     pub height: u32,
+    pub pixels: Option<Vec<u8>>, // raw RGBA pixels for direct IPC transfer (preview only)
 }
 
 #[derive(Serialize)]
@@ -861,14 +862,34 @@ fn process_pixels(
     let lut_b = build_curve_lut(&adj.tone_curve_b);
 
     // Pre-compute factors
-    let exposure_mult = (2.0_f64).powf(adj.exposure);
-    let contrast_amt = adj.contrast / 100.0;
+    // Pre-compute factors with dampening for extreme values
+    // Exposure: apply soft dampening above |3| EV to prevent total blowout
+    let raw_exposure = adj.exposure;
+    let dampened_exposure = if raw_exposure.abs() > 3.0 {
+        let sign = raw_exposure.signum();
+        let excess = raw_exposure.abs() - 3.0;
+        sign * (3.0 + excess * 0.4) // 60% dampening past ±3 EV
+    } else {
+        raw_exposure
+    };
+    let exposure_mult = (2.0_f64).powf(dampened_exposure);
+
+    // Contrast: cap the power function to prevent extreme gamma
+    let contrast_raw = adj.contrast / 100.0;
+    let contrast_amt = if contrast_raw.abs() > 0.7 {
+        let sign = contrast_raw.signum();
+        let excess = contrast_raw.abs() - 0.7;
+        sign * (0.7 + excess * 0.3) // dampened past 70%
+    } else {
+        contrast_raw
+    };
     let highlights_amt = adj.highlights / 100.0;
     let shadows_amt = adj.shadows / 100.0;
     let whites_amt = adj.whites / 100.0;
     let blacks_amt = adj.blacks / 100.0;
     let vibrance_amt = adj.vibrance / 100.0;
-    let saturation_mult = 1.0 + adj.saturation / 100.0;
+    // Saturation: prevent total inversion (clamp multiplier to [0.0, 2.5])
+    let saturation_mult = (1.0 + adj.saturation / 100.0).max(0.0).min(2.5);
 
     // White balance
     let temp_k = if adj.temperature == 0.0 { 6500.0 } else { adj.temperature };
@@ -1458,6 +1479,7 @@ pub async fn process_image(
                 preview_path,
                 width,
                 height,
+                pixels: None,
             });
         }
 
@@ -1481,7 +1503,20 @@ pub async fn process_image(
 
         pixels = active_pixels;
 
-        // Write to temp file as BMP
+        // For preview mode with reasonable size images, return raw RGBA directly via IPC
+        // This eliminates the BMP file write + read + decode round-trip (~100ms savings)
+        let pixel_count = (width * height) as usize;
+        if preview && pixel_count <= 1_000_000 {
+            // Under ~1MP: return raw pixels directly (≤4MB via IPC — well within limits)
+            return Ok(ProcessResult {
+                preview_path: String::new(),
+                width,
+                height,
+                pixels: Some(pixels),
+            });
+        }
+
+        // For larger images or full-res: write to temp BMP file (fallback)
         let img_buf = image::RgbaImage::from_raw(width, height, pixels)
             .ok_or_else(|| "Failed to create image buffer".to_string())?;
         img_buf.save_with_format(&preview_path, image::ImageFormat::Bmp)
@@ -1491,6 +1526,7 @@ pub async fn process_image(
             preview_path,
             width,
             height,
+            pixels: None,
         })
     })
     .await

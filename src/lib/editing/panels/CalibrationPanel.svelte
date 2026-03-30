@@ -6,10 +6,14 @@
     export let adjustments: AdjustmentState;
     export let expanded: boolean = false;
 
-    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState> }>();
+    const dispatch = createEventDispatcher<{ change: Partial<AdjustmentState>; scrub: Partial<AdjustmentState> }>();
 
     function update(key: keyof AdjustmentState, e: CustomEvent<number>) {
         dispatch('change', { [key]: e.detail });
+    }
+
+    function scrub(key: keyof AdjustmentState, e: CustomEvent<number>) {
+        dispatch('scrub', { [key]: e.detail });
     }
 
     function resetPanel() {
@@ -35,19 +39,19 @@
     </button>
     {#if expanded}
         <div class="panel-body" transition:slide|local={{ duration: 250 }}>
-            <SliderRow label="Shadow Tint" value={adjustments.calShadowTint} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calShadowTint', e)} />
+            <SliderRow label="Shadow Tint" value={adjustments.calShadowTint} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calShadowTint', e)} on:scrub={(e) => scrub('calShadowTint', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Red Primary</div>
-            <SliderRow label="Hue" value={adjustments.calRedHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calRedHue', e)} />
-            <SliderRow label="Saturation" value={adjustments.calRedSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calRedSat', e)} />
+            <SliderRow label="Hue" value={adjustments.calRedHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calRedHue', e)} on:scrub={(e) => scrub('calRedHue', e)} />
+            <SliderRow label="Saturation" value={adjustments.calRedSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calRedSat', e)} on:scrub={(e) => scrub('calRedSat', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Green Primary</div>
-            <SliderRow label="Hue" value={adjustments.calGreenHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calGreenHue', e)} />
-            <SliderRow label="Saturation" value={adjustments.calGreenSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calGreenSat', e)} />
+            <SliderRow label="Hue" value={adjustments.calGreenHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calGreenHue', e)} on:scrub={(e) => scrub('calGreenHue', e)} />
+            <SliderRow label="Saturation" value={adjustments.calGreenSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calGreenSat', e)} on:scrub={(e) => scrub('calGreenSat', e)} />
 
             <div class="group-label" style="margin-top: 8px;">Blue Primary</div>
-            <SliderRow label="Hue" value={adjustments.calBlueHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calBlueHue', e)} />
-            <SliderRow label="Saturation" value={adjustments.calBlueSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calBlueSat', e)} />
+            <SliderRow label="Hue" value={adjustments.calBlueHue} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calBlueHue', e)} on:scrub={(e) => scrub('calBlueHue', e)} />
+            <SliderRow label="Saturation" value={adjustments.calBlueSat} min={-100} max={100} step={1} defaultValue={0} on:change={(e) => update('calBlueSat', e)} on:scrub={(e) => scrub('calBlueSat', e)} />
         </div>
     {/if}
 </div>
