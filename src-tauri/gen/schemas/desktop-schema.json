@@ -2217,6 +2217,12 @@
           "markdownDescription": "Create tag"
         },
         {
+          "description": "Duplicate detection",
+          "type": "string",
+          "const": "curation",
+          "markdownDescription": "Duplicate detection"
+        },
+        {
           "description": "Delete album",
           "type": "string",
           "const": "delete-album",
@@ -2295,6 +2301,12 @@
           "markdownDescription": "Get photo detail"
         },
         {
+          "description": "GPS locations for map",
+          "type": "string",
+          "const": "get-photo-locations",
+          "markdownDescription": "GPS locations for map"
+        },
+        {
           "description": "Get photo tags",
           "type": "string",
           "const": "get-photo-tags",
@@ -2325,10 +2337,28 @@
           "markdownDescription": "Get thumbnail path"
         },
         {
+          "description": "Timeline density for Chronicle Atlas",
+          "type": "string",
+          "const": "get-timeline-density",
+          "markdownDescription": "Timeline density for Chronicle Atlas"
+        },
+        {
+          "description": "Get trash photos",
+          "type": "string",
+          "const": "get-trash-photos",
+          "markdownDescription": "Get trash photos"
+        },
+        {
           "description": "Hard delete photos",
           "type": "string",
           "const": "hard-delete-photos",
           "markdownDescription": "Hard delete photos"
+        },
+        {
+          "description": "Photo develop variants",
+          "type": "string",
+          "const": "photo-variants",
+          "markdownDescription": "Photo develop variants"
         },
         {
           "description": "Process image",
@@ -2395,6 +2425,12 @@
           "type": "string",
           "const": "search-photos",
           "markdownDescription": "Search photos"
+        },
+        {
+          "description": "Facet search",
+          "type": "string",
+          "const": "search-with-facets",
+          "markdownDescription": "Facet search"
         },
         {
           "description": "Select and index photos",

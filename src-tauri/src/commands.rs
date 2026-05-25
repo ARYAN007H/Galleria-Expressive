@@ -1,15 +1,28 @@
 use crate::db::Database;
 use crate::scan;
 use crate::thumb;
+use crate::watcher::LibraryWatcher;
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::mpsc;
+
+static WATCHER_PAUSED: AtomicBool = AtomicBool::new(false);
+static WATCHER_HANDLE: Mutex<Option<LibraryWatcher>> = Mutex::new(None);
 
 pub struct AppState {
     db: Mutex<Option<Database>>,
     library_root: Mutex<Option<String>>,
     library_roots: Mutex<Vec<(i64, String)>>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryBatchPayload {
+    pub added: Vec<crate::db::PhotoRecord>,
+    pub removed_ids: Vec<i64>,
+    pub updated: Vec<crate::db::PhotoRecord>,
 }
 
 #[derive(Clone, Serialize)]
@@ -33,7 +46,11 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
     if !path.exists() || !path.is_dir() {
         return Err("Invalid or missing directory".to_string());
     }
-    let root_str = path.to_string_lossy().to_string();
+    // Normalize the path to strip Windows UNC prefix (\\?\)
+    let root_str = {
+        let s = path.to_string_lossy().to_string();
+        if s.starts_with(r"\\?\") { s[4..].to_string() } else { s }
+    };
 
     let db_path = db_path(&app);
     if let Some(parent) = db_path.parent() {
@@ -42,7 +59,7 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
 
     let db = Database::new(&db_path).map_err(|e| e.to_string())?;
     let library_id = db.get_or_create_library(&root_str).map_err(|e| e.to_string())?;
-    db.clear_photos_for_library(library_id).map_err(|e| e.to_string())?;
+    WATCHER_PAUSED.store(true, Ordering::SeqCst);
 
     app.emit("index-progress", IndexProgress {
         phase: "scanning".to_string(),
@@ -106,6 +123,9 @@ pub async fn select_and_index(app: AppHandle, path: String) -> Result<serde_json
         }
         eprintln!("✓ App state set: library_root = {}, library_id = {}, total photos = {}", root_str, library_id, total);
     }
+
+    WATCHER_PAUSED.store(false, Ordering::SeqCst);
+    let _ = ensure_library_watcher(&app);
 
     Ok(serde_json::json!({
         "libraryPath": root_str,
@@ -259,7 +279,117 @@ pub async fn restore_session(
     *state.library_roots.lock().unwrap() = roots;
     *state.db.lock().unwrap() = Some(db);
 
+    let _ = ensure_library_watcher(&app);
+
     Ok(libraries)
+}
+
+fn ensure_library_watcher(app: &AppHandle) -> Result<(), String> {
+    let paths: Vec<String> = {
+        let state = app.try_state::<AppState>().ok_or("No app state")?;
+        let roots = state.library_roots.lock().unwrap();
+        roots.iter().map(|(_, p)| p.clone()).collect()
+    };
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let mut guard = WATCHER_HANDLE.lock().unwrap();
+    if guard.is_some() {
+        return Ok(());
+    }
+    *guard = Some(crate::watcher::start_library_watcher(app.clone(), paths)?);
+    Ok(())
+}
+
+/// Process coalesced FS batch and emit single IPC event to frontend.
+pub async fn flush_library_batch(
+    app: &AppHandle,
+    added_paths: Vec<String>,
+    removed_paths: Vec<String>,
+    renamed: Vec<(String, String)>,
+) -> Result<(), String> {
+    if WATCHER_PAUSED.load(Ordering::SeqCst) {
+        return Ok(());
+    }
+    if added_paths.is_empty() && removed_paths.is_empty() && renamed.is_empty() {
+        return Ok(());
+    }
+
+    let state = app.try_state::<AppState>().ok_or("No app state")?;
+
+    let mut paths_to_add = added_paths;
+    let mut paths_to_remove = removed_paths;
+    for (from, to) in renamed {
+        paths_to_remove.push(from);
+        if std::path::Path::new(&to).exists() {
+            paths_to_add.push(to);
+        }
+    }
+
+    let (removed_ids, paths_for_thumbs) = {
+        let db_guard = state.db.lock().unwrap();
+        let db = db_guard.as_ref().ok_or("No database")?;
+        let removed_ids = if paths_to_remove.is_empty() {
+            Vec::new()
+        } else {
+            db.delete_photos_by_paths(&paths_to_remove).map_err(|e| e.to_string())?
+        };
+        let mut paths_for_thumbs: Vec<String> = Vec::new();
+        for path in paths_to_add {
+            if !std::path::Path::new(&path).exists() {
+                continue;
+            }
+            let Some((library_id, root)) = db.find_library_id_for_path(&path).map_err(|e| e.to_string())?
+            else {
+                continue;
+            };
+            let root_path = std::path::PathBuf::from(&root);
+            let canonical = root_path.canonicalize().unwrap_or(root_path);
+            let pb = std::path::PathBuf::from(&path);
+            let batch = scan::process_paths_batch(&[pb], &canonical);
+            if batch.is_empty() {
+                continue;
+            }
+            db.batch_insert_photos(library_id, &batch)
+                .map_err(|e| e.to_string())?;
+            paths_for_thumbs.push(path);
+        }
+        (removed_ids, paths_for_thumbs)
+    };
+
+    for path in &paths_for_thumbs {
+        let _ = thumb::get_or_create_thumbnail_info(path, Some(file_mtime_unix(path))).await;
+    }
+
+    let added_records = {
+        let db_guard = state.db.lock().unwrap();
+        let db = db_guard.as_ref().ok_or("No database")?;
+        let mut records = Vec::new();
+        for path in paths_for_thumbs {
+            if let Ok(Some((library_id, _))) = db.find_library_id_for_path(&path) {
+                if let Ok(rows) = db.get_photos(library_id, 100, 0, None, None, None, None) {
+                    if let Some(r) = rows.into_iter().find(|r| r.path == path) {
+                        records.push(r);
+                    }
+                }
+            }
+        }
+        records
+    };
+
+    let payload = LibraryBatchPayload {
+        added: added_records,
+        removed_ids,
+        updated: Vec::new(),
+    };
+
+    app.emit("library-batch-changed", payload)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn file_mtime_unix(path: &str) -> u64 {
+    thumb::file_mtime(std::path::Path::new(path))
 }
 
 /// Auto-scan default user directories for photos
@@ -268,11 +398,28 @@ pub async fn scan_default_directories(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    let home = std::env::var("HOME").map_err(|_| "Could not determine HOME directory".to_string())?;
+    // Cross-platform home directory detection
+    let home = {
+        #[cfg(target_os = "windows")]
+        {
+            std::env::var("USERPROFILE")
+                .or_else(|_| std::env::var("HOMEDRIVE").map(|d| {
+                    let p = std::env::var("HOMEPATH").unwrap_or_default();
+                    format!("{}{}", d, p)
+                }))
+                .map_err(|_| "Could not determine home directory".to_string())?
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            std::env::var("HOME")
+                .map_err(|_| "Could not determine HOME directory".to_string())?
+        }
+    };
+    let sep = std::path::MAIN_SEPARATOR;
     let dirs_to_scan: Vec<(&str, String)> = vec![
-        ("Pictures", format!("{}/Pictures", home)),
-        ("Downloads", format!("{}/Downloads", home)),
-        ("Documents", format!("{}/Documents", home)),
+        ("Pictures", format!("{}{sep}Pictures", home)),
+        ("Downloads", format!("{}{sep}Downloads", home)),
+        ("Documents", format!("{}{sep}Documents", home)),
     ];
 
     let db_path = db_path(&app);
@@ -984,4 +1131,161 @@ pub async fn load_edit_params(
     } else {
         Ok(None)
     }
+}
+
+// ── Trash, Atlas, Search facets, Variants, Curation ──
+
+#[tauri::command]
+pub async fn get_trash_photos(
+    state: State<'_, AppState>,
+    params: Option<GetPhotosParams>,
+) -> Result<Vec<crate::db::PhotoRecord>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let roots = state.library_roots.lock().unwrap();
+    let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+    let limit = params.as_ref().and_then(|p| p.limit).unwrap_or(100).min(500);
+    let offset = params.as_ref().and_then(|p| p.offset).unwrap_or(0);
+    db.get_trash_photos_all_libraries(&library_ids, limit, offset)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_timeline_density(
+    state: State<'_, AppState>,
+    year: Option<i32>,
+) -> Result<Vec<crate::db::CategoryMonth>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let roots = state.library_roots.lock().unwrap();
+    let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+    db.get_timeline_density(&library_ids, year)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_photo_locations(
+    state: State<'_, AppState>,
+    limit: Option<i64>,
+) -> Result<Vec<crate::db::PhotoLocation>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let roots = state.library_roots.lock().unwrap();
+    let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+    db.get_photo_locations(&library_ids, limit.unwrap_or(2000).min(2000))
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchFacetsParams {
+    pub query: Option<String>,
+    pub camera_make: Option<String>,
+    pub camera_model: Option<String>,
+    pub media_type: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[tauri::command]
+pub async fn search_with_facets(
+    state: State<'_, AppState>,
+    params: SearchFacetsParams,
+) -> Result<Vec<crate::db::PhotoRecord>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let roots = state.library_roots.lock().unwrap();
+    let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+    db.search_with_facets(
+        &library_ids,
+        params.query.as_deref(),
+        params.camera_make.as_deref(),
+        params.camera_model.as_deref(),
+        params.media_type.as_deref(),
+        params.limit.unwrap_or(200).min(500),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_photo_variant(
+    state: State<'_, AppState>,
+    photo_id: i64,
+    name: String,
+    edit_params: String,
+) -> Result<crate::db::PhotoVariant, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    db.create_variant(photo_id, &name, &edit_params)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_photo_variants(
+    state: State<'_, AppState>,
+    photo_id: i64,
+) -> Result<Vec<crate::db::PhotoVariant>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    db.get_variants(photo_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_photo_variant(
+    state: State<'_, AppState>,
+    variant_id: i64,
+) -> Result<(), String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    db.delete_variant(variant_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_duplicate_groups(
+    state: State<'_, AppState>,
+    threshold: Option<u32>,
+) -> Result<Vec<Vec<i64>>, String> {
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let roots = state.library_roots.lock().unwrap();
+    let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+    db.find_duplicate_groups(&library_ids, threshold.unwrap_or(8))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn run_phash_indexing(state: State<'_, AppState>) -> Result<u64, String> {
+    let photos = {
+        let db_guard = state.db.lock().unwrap();
+        let db = db_guard.as_ref().ok_or("No library loaded")?;
+        let roots = state.library_roots.lock().unwrap();
+        let library_ids: Vec<i64> = roots.iter().map(|(id, _)| *id).collect();
+        db.get_photos_all_libraries(&library_ids, 5000, 0)
+            .map_err(|e| e.to_string())?
+    };
+
+    let paths: Vec<(i64, String)> = photos
+        .into_iter()
+        .filter(|p| p.media_type == "photo")
+        .map(|p| (p.id, p.path))
+        .collect();
+
+    let hashes = tauri::async_runtime::spawn_blocking(move || {
+        paths
+            .into_iter()
+            .filter_map(|(id, path)| {
+                crate::curation::compute_phash_from_path(&path).map(|h| (id, h))
+            })
+            .collect::<Vec<_>>()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let db_guard = state.db.lock().unwrap();
+    let db = db_guard.as_ref().ok_or("No library loaded")?;
+    let mut n = 0u64;
+    for (id, hash) in hashes {
+        db.set_photo_phash(id, &hash).map_err(|e| e.to_string())?;
+        n += 1;
+    }
+    Ok(n)
 }

@@ -859,3 +859,42 @@ body[data-perf-mode="true"] {
     --shadow-float: var(--shadow-md);
     --shadow-glow: none;
 }
+
+/* ══════════════════════════════════════════
+   Expressive Tiers (i3 / 8GB optimized)
+   ══════════════════════════════════════════ */
+body[data-expressive-tier="essential"] [style*="backdrop-filter"],
+body[data-expressive-tier="essential"] .date-header-pill,
+body[data-expressive-tier="essential"] .bottom-pill,
+body[data-expressive-tier="essential"] .m3-nav-pill .pill-inner {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body[data-expressive-tier="essential"] .photo-card:hover {
+    transform: none !important;
+}
+
+body[data-expressive-tier="balanced"] [style*="backdrop-filter"],
+body[data-expressive-tier="balanced"] .date-header-pill,
+body[data-expressive-tier="balanced"] .bottom-pill,
+body[data-expressive-tier="balanced"] .m3-nav-pill .pill-inner {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body[data-expressive-tier="balanced"] .photo-card:hover {
+    transform: scale(1.02);
+}
+
+body[data-expressive-tier="full"] {
+    /* Full cinematic — default CSS */
+}
+
+/* Focus halo for keyboard navigation */
+.photo-card.focus-halo,
+.mosaic-photo.focus-halo {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+    z-index: 2;
+}

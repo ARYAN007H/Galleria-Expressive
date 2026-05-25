@@ -26,6 +26,13 @@
     import { longPressPhoto } from "./components/PhotoGrid.svelte";
     import { ambientColor } from "./lib/ambientColor";
     import { photos, libraryPath } from "./lib/store";
+    import IntentRail from "./components/IntentRail.svelte";
+    import ChronicleAtlas from "./components/ChronicleAtlas.svelte";
+    import CuratorDesk from "./components/CuratorDesk.svelte";
+    import {
+        showChronicleAtlas,
+        showCuratorDesk,
+    } from "./lib/store";
 
     $: isDarkMode = $appSettings.theme === "dark";
 
@@ -39,10 +46,21 @@
     $: isExpressive = $appSettings.layoutMode === "expressive";
     $: showSidebar = $appSettings.showSidebar && !isExpressive;
 
-    // Performance Mode: set body attribute for CSS overrides
-    $: if (typeof document !== 'undefined') {
-        document.body.setAttribute('data-perf-mode', String($appSettings.performanceMode));
+    $: if (typeof document !== "undefined") {
+        document.body.setAttribute(
+            "data-perf-mode",
+            String($appSettings.performanceMode),
+        );
+        document.body.setAttribute(
+            "data-expressive-tier",
+            $appSettings.expressiveTier || "balanced",
+        );
     }
+
+    $: useMosaic =
+        $appSettings.expressiveTier === "full" ||
+        ($appSettings.expressiveTier === "balanced" &&
+            $appSettings.layoutMode === "expressive");
 
     // Keyboard shortcuts
     function handleKeydown(e: KeyboardEvent) {
@@ -111,11 +129,17 @@
                 </div>
             {:else if $photos.length === 0}
                 <EmptyState />
+            {:else if $showChronicleAtlas}
+                <ChronicleAtlas onClose={() => showChronicleAtlas.set(false)} />
+            {:else if $showCuratorDesk}
+                <CuratorDesk onClose={() => showCuratorDesk.set(false)} />
             {:else}
-                <PhotoGrid />
+                <PhotoGrid useMosaic={useMosaic} />
             {/if}
         </main>
     </div>
+
+    <IntentRail />
 
     {#if isExpressive}
         <!-- Keep BottomPill but we might need to change its styling to match the new mobile nav -->

@@ -4,6 +4,8 @@
         selectedPhoto,
         filters,
         loadAllPhotos,
+        loadTrashPhotos,
+        trashCount,
         showSettings,
         appSettings,
         toggleTheme,
@@ -16,7 +18,8 @@
         { path: "all", icon: Icons.Image, label: "Photos" },
         { path: "albums", icon: Icons.FolderOpen, label: "Albums" },
         { path: "favorites", icon: Icons.Heart, label: "Favorites" },
-        { path: "trash", icon: Icons.Trash2, label: "Trash" },
+        { path: "videos", icon: Icons.Video, label: "Videos" },
+        { path: "trash", icon: Icons.Trash2, label: "Trash", badge: true },
     ];
 
     $: isDarkMode = $appSettings.theme === "dark";
@@ -36,6 +39,7 @@
         } else if (id === "trash") {
             activeSection.set("trash");
             filters.update((f) => ({ ...f, selectedFolder: null }));
+            await loadTrashPhotos();
         } else {
             activeSection.set(id as any);
         }
@@ -69,6 +73,9 @@
                         />
                     </div>
                     <span class="nav-label">{item.label}</span>
+                    {#if item.badge && item.path === "trash" && $trashCount > 0}
+                        <span class="nav-badge">{$trashCount}</span>
+                    {/if}
                 </button>
             {/each}
         </nav>
@@ -242,6 +249,16 @@
     .nav-label {
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .nav-badge {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 700;
+        background: var(--md-sys-color-error-container, #fce8e6);
+        color: var(--md-sys-color-on-error-container, #410e0b);
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
     }
 
     /* ── Spacer & Footer ── */

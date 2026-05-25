@@ -4,6 +4,22 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use walkdir::WalkDir;
 
+/// Normalize a path to strip Windows UNC extended-length prefix (\\?\)
+/// and ensure consistent path representation across platforms.
+fn normalize_path(path: &Path) -> PathBuf {
+    let s = path.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        PathBuf::from(&s[4..])
+    } else {
+        path.to_path_buf()
+    }
+}
+
+/// Normalize a folder_rel string to always use forward slashes
+fn normalize_folder_rel(folder_rel: &str) -> String {
+    folder_rel.replace('\\', "/")
+}
+
 const PHOTO_EXT: &[&str] = &[
     "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif", "heic", "heif", "raw", "arw", "cr2",
     "nef", "dng",
@@ -155,13 +171,13 @@ fn modified_time_string(path: &Path) -> String {
 
 /// Phase 1: collect media file paths only (fast).
 pub fn collect_media_paths(root: &Path) -> Vec<PathBuf> {
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let root = normalize_path(&root.canonicalize().unwrap_or_else(|_| root.to_path_buf()));
     WalkDir::new(&root)
         .follow_links(false)
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
-        .map(|e| e.into_path())
+        .map(|e| normalize_path(&e.into_path()))
         .filter(|p| {
             let ext = get_extension(p);
             ext.map(|e| {
@@ -196,16 +212,18 @@ pub struct ScannedFile {
 }
 
 fn build_scanned_file(path: &Path, root: &Path) -> Option<ScannedFile> {
-    let path_str = path.to_string_lossy().to_string();
-    let filename = path
+    let norm_path = normalize_path(path);
+    let norm_root = normalize_path(root);
+    let path_str = norm_path.to_string_lossy().to_string();
+    let filename = norm_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("")
         .to_string();
-    let folder_rel = path
+    let folder_rel = norm_path
         .parent()
-        .and_then(|p| p.strip_prefix(root).ok())
-        .map(|p| p.to_string_lossy().to_string())
+        .and_then(|p| p.strip_prefix(&norm_root).ok())
+        .map(|p| normalize_folder_rel(&p.to_string_lossy()))
         .unwrap_or_default();
 
     let media_type = media_type_from_path(path).to_string();
@@ -252,7 +270,7 @@ fn build_scanned_file(path: &Path, root: &Path) -> Option<ScannedFile> {
 
 /// Process a batch of paths into ScannedFile (for chunked progress).
 pub fn process_paths_batch(paths: &[PathBuf], root: &Path) -> Vec<ScannedFile> {
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let root = normalize_path(&root.canonicalize().unwrap_or_else(|_| root.to_path_buf()));
     paths
         .iter()
         .filter_map(|path| build_scanned_file(path, &root))
@@ -262,16 +280,18 @@ pub fn process_paths_batch(paths: &[PathBuf], root: &Path) -> Vec<ScannedFile> {
 /// Light version of build_scanned_file — skips expensive image dimension reading.
 /// Dimensions come from thumbnail generation instead.
 pub fn build_scanned_file_light(path: &Path, root: &Path) -> Option<ScannedFile> {
-    let path_str = path.to_string_lossy().to_string();
-    let filename = path
+    let norm_path = normalize_path(path);
+    let norm_root = normalize_path(root);
+    let path_str = norm_path.to_string_lossy().to_string();
+    let filename = norm_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("")
         .to_string();
-    let folder_rel = path
+    let folder_rel = norm_path
         .parent()
-        .and_then(|p| p.strip_prefix(root).ok())
-        .map(|p| p.to_string_lossy().to_string())
+        .and_then(|p| p.strip_prefix(&norm_root).ok())
+        .map(|p| normalize_folder_rel(&p.to_string_lossy()))
         .unwrap_or_default();
 
     let media_type = media_type_from_path(path).to_string();
@@ -310,7 +330,7 @@ pub fn build_scanned_file_light(path: &Path, root: &Path) -> Option<ScannedFile>
 #[allow(dead_code)]
 pub fn scan_directory(root: &Path) -> Vec<ScannedFile> {
     let paths = collect_media_paths(root);
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let root = normalize_path(&root.canonicalize().unwrap_or_else(|_| root.to_path_buf()));
     paths
         .par_iter()
         .filter_map(|path| build_scanned_file(path, &root))

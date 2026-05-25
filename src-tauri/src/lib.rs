@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod image_processing;
+mod curation;
 mod db;
 mod scan;
 mod thumb;
@@ -73,6 +74,15 @@ pub fn run() {
             // Performance & streaming
             commands::scan_directory,
             commands::get_system_info,
+            commands::get_trash_photos,
+            commands::get_timeline_density,
+            commands::get_photo_locations,
+            commands::search_with_facets,
+            commands::create_photo_variant,
+            commands::get_photo_variants,
+            commands::delete_photo_variant,
+            commands::get_duplicate_groups,
+            commands::run_phash_indexing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

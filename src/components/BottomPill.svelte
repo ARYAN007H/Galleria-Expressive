@@ -1,11 +1,18 @@
 <script lang="ts">
     import { icons } from "../lib/icons";
-    import { activeSection, favoritesCount, selectedPhoto } from "../lib/store";
+    import {
+        activeSection,
+        favoritesCount,
+        trashCount,
+        selectedPhoto,
+        loadTrashPhotos,
+    } from "../lib/store";
     import type { SidebarSection } from "../lib/store";
     import { scrollingDown } from "./PhotoGrid.svelte";
 
-    function setSection(section: SidebarSection) {
+    async function setSection(section: SidebarSection) {
         activeSection.set(section);
+        if (section === "trash") await loadTrashPhotos();
     }
 
     type PillItem = {
@@ -23,6 +30,8 @@
         },
         { id: "favorites", label: "Favorites", icon: icons.heart },
         { id: "recents", label: "Recents", icon: icons.clock },
+        { id: "videos", label: "Videos", icon: icons.folder },
+        { id: "trash", label: "Trash", icon: icons.trash, badge: true },
     ];
 
     // Hide pill when detail view is open
@@ -55,6 +64,9 @@
                         </span>
                         {#if item.id === "favorites" && $favoritesCount > 0}
                             <span class="pill-badge">{$favoritesCount}</span>
+                        {/if}
+                        {#if item.badge && item.id === "trash" && $trashCount > 0}
+                            <span class="pill-badge">{$trashCount}</span>
                         {/if}
                     </div>
                     <span class="pill-label">{item.label}</span>

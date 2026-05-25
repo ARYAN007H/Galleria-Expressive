@@ -38,12 +38,39 @@ pub struct ThumbnailInfo {
     pub error: bool,
 }
 
-/// Cache directory: ~/.cache/galleria-expressive/thumbs/
+/// Get a cross-platform cache directory
+fn get_cache_base_dir() -> io::Result<PathBuf> {
+    // Try platform-specific cache directories first
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: use LOCALAPPDATA, then APPDATA, then USERPROFILE
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            return Ok(PathBuf::from(local));
+        }
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            return Ok(PathBuf::from(appdata));
+        }
+        if let Ok(profile) = std::env::var("USERPROFILE") {
+            return Ok(PathBuf::from(profile).join("AppData").join("Local"));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // macOS/Linux: use XDG_CACHE_HOME or ~/.cache
+        if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
+            return Ok(PathBuf::from(xdg));
+        }
+        if let Ok(home) = std::env::var("HOME") {
+            return Ok(PathBuf::from(home).join(".cache"));
+        }
+    }
+    Err(io::Error::new(io::ErrorKind::NotFound, "Could not determine cache directory"))
+}
+
+/// Cache directory for thumbnails (cross-platform)
 pub fn thumbnail_cache_dir() -> io::Result<PathBuf> {
-    let home = std::env::var("HOME")
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-    let thumb_dir = PathBuf::from(home)
-        .join(".cache")
+    let cache_base = get_cache_base_dir()?;
+    let thumb_dir = cache_base
         .join("galleria-expressive")
         .join("thumbs");
     fs::create_dir_all(&thumb_dir)?;
@@ -74,17 +101,17 @@ pub fn thumbnail_path_for(source_path: &str) -> Result<PathBuf, String> {
     Ok(cache_dir.join(format!("{}_240.jpg", key)))
 }
 
-/// Check if a cached thumbnail is still valid (mtime matches)
-pub fn is_thumb_valid(thumb_path: &Path, expected_mtime: u64) -> bool {
+/// Check if a cached thumbnail is still valid (source not newer than thumb file)
+pub fn is_thumb_valid(thumb_path: &Path, source_mtime: u64) -> bool {
     if !thumb_path.exists() {
         return false;
     }
-    if expected_mtime == 0 {
-        // No mtime to compare — accept if file exists
+    if source_mtime == 0 {
         return true;
     }
-    // Thumbnail exists; we trust it unless the caller says mtime changed
-    true
+    let thumb_mtime = file_mtime(thumb_path);
+    // Regenerate when source was modified after thumbnail was written
+    source_mtime <= thumb_mtime
 }
 
 /// Generate a thumbnail for a single file. Returns ThumbnailInfo.

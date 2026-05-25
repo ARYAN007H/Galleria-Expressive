@@ -68,6 +68,7 @@ export interface FilterState {
 export type ViewMode = 'grid' | 'list'
 export type Theme = 'light' | 'dark'
 export type LayoutMode = 'compact' | 'default' | 'expressive'
+export type ExpressiveTier = 'essential' | 'balanced' | 'full'
 export type SortBy = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc'
 export type SidebarSection = 'all' | 'recents' | 'favorites' | 'videos' | 'source' | 'trash' | 'album' | 'albums' | 'tag'
 export type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal' | 'indigo'
@@ -86,6 +87,8 @@ export interface AppSettings {
     maxVisibleFolders: number
     performanceMode: boolean
     performanceModeAuto: boolean
+    expressiveTier: ExpressiveTier
+    tierAutoDetected: boolean
 }
 
 // ── Settings Persistence ──
@@ -111,6 +114,8 @@ const defaultSettings: AppSettings = {
     maxVisibleFolders: 8,
     performanceMode: false,
     performanceModeAuto: false,
+    expressiveTier: 'balanced',
+    tierAutoDetected: false,
 }
 
 function saveSettings(s: AppSettings) {
@@ -203,6 +208,7 @@ export const libraryPath = writable<string | null>(null)
 export const photos = writable<Photo[]>([])
 export const searchQuery = writable<string>('')
 export const selectedPhoto = writable<Photo | null>(null)
+export const focusedPhotoId = writable<number | null>(null)
 export const isIndexing = writable<boolean>(false)
 export const hasMorePhotos = writable<boolean>(true)
 export const isLoadingMore = writable<boolean>(false)
@@ -225,6 +231,8 @@ export const activeSection = writable<SidebarSection>('all')
 export const activeResourceId = writable<number | null>(null) // For album/tag IDs
 export const showSettings = writable<boolean>(false)
 export const showEditor = writable<boolean>(false)
+export const showChronicleAtlas = writable<boolean>(false)
+export const showCuratorDesk = writable<boolean>(false)
 export const showInfoPanel = writable<boolean>(false)
 export const sourceDirectories = writable<SourceDirectory[]>([])
 export const activeSource = writable<string | null>(null) // null = all sources
@@ -263,6 +271,12 @@ export const filteredPhotos = derived(
         }
 
         // Section-based filtering
+        if ($activeSection === 'trash') {
+            filtered = filtered.filter(p => p.isDeleted)
+        } else {
+            filtered = filtered.filter(p => !p.isDeleted)
+        }
+
         if ($activeSection === 'favorites') {
             filtered = filtered.filter(p => p.isFavorite)
         } else if ($activeSection === 'videos') {
@@ -483,7 +497,7 @@ export async function indexLibrary() {
             if (libs) {
                 sourceDirectories.set(libs.map((l: any) => ({
                     id: l.id,
-                    name: l.rootPath?.split('/').pop() || l.root_path?.split('/').pop() || 'Library',
+                    name: (l.rootPath || l.root_path || '').split(/[\\/]/).filter(Boolean).pop() || 'Library',
                     rootPath: l.rootPath || l.root_path,
                     photoCount: l.photoCount || l.photo_count || 0
                 })))
@@ -525,6 +539,45 @@ export async function searchPhotos(query: string) {
     searchQuery.set(query)
 }
 
+export interface SearchFacets {
+    query?: string
+    cameraMake?: string
+    cameraModel?: string
+    mediaType?: string
+}
+
+export async function searchWithFacets(facets: SearchFacets) {
+    try {
+        const result = await invoke<Photo[]>('search_with_facets', {
+            query: facets.query || null,
+            cameraMake: facets.cameraMake || null,
+            cameraModel: facets.cameraModel || null,
+            mediaType: facets.mediaType || null,
+            limit: 200,
+        })
+        photos.set(result || [])
+        hasMorePhotos.set(false)
+    } catch (err) {
+        console.error('Facet search failed:', err)
+    }
+}
+
+export interface PhotoVariant {
+    id: number
+    photoId: number
+    name: string
+    editParams: string
+    createdAt: string
+}
+
+export async function createPhotoVariant(photoId: number, name: string, editParams: string) {
+    return invoke<PhotoVariant>('create_photo_variant', { photoId, name, editParams })
+}
+
+export async function getPhotoVariants(photoId: number) {
+    return invoke<PhotoVariant[]>('get_photo_variants', { photoId })
+}
+
 // Debounced search for input fields
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 export function debouncedSearch(query: string, delay = 300) {
@@ -543,7 +596,7 @@ export async function initAutoScan() {
         if (libraries && libraries.length > 0) {
             sourceDirectories.set(libraries.map((l: any) => ({
                 id: l.id,
-                name: l.name || l.rootPath?.split('/').pop() || l.root_path?.split('/').pop() || 'Library',
+                name: l.name || (l.rootPath || l.root_path || '').split(/[\\/]/).filter(Boolean).pop() || 'Library',
                 rootPath: l.rootPath || l.root_path,
                 photoCount: l.photoCount || l.photo_count || 0
             })))
@@ -570,32 +623,97 @@ export async function initAutoScan() {
             }))
             console.log(`[PerfMode] Auto-enabled: RAM ${sysInfo.availableRamMb}MB, ${sysInfo.cpuThreads} threads (${sysInfo.cpuName})`)
         }
+        if (!current.tierAutoDetected) {
+            let tier: ExpressiveTier = 'full'
+            if (sysInfo.totalRamMb <= 4096) tier = 'essential'
+            else if (sysInfo.totalRamMb <= 8192) tier = 'balanced'
+            appSettings.update(s => ({
+                ...s,
+                expressiveTier: tier,
+                tierAutoDetected: true,
+                performanceMode: tier !== 'full' ? true : s.performanceMode,
+            }))
+        }
     } catch (err) {
         console.warn('Failed to get system info for perf mode:', err)
     }
+
+    const { initLibrarySync } = await import('./librarySync')
+    await initLibrarySync()
+}
+
+let hydrateGeneration = 0
+let hydrateIdleScheduled = false
+
+function scheduleIdleHydration() {
+    if (hydrateIdleScheduled || !get(hasMorePhotos)) return
+    hydrateIdleScheduled = true
+    const gen = hydrateGeneration
+    const run = () => {
+        hydrateIdleScheduled = false
+        if (gen !== hydrateGeneration) return
+        if (!get(hasMorePhotos) || get(isLoadingMore)) {
+            if (get(hasMorePhotos)) scheduleIdleHydration()
+            return
+        }
+        loadMorePhotos().then(() => {
+            if (gen === hydrateGeneration && get(hasMorePhotos)) scheduleIdleHydration()
+        })
+    }
+    if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(run, { timeout: 2000 })
+    } else {
+        setTimeout(run, 16)
+    }
+}
+
+/** Patch a single photo row in place (shallow update). */
+export function patchPhoto(photoId: number, partial: Partial<Photo>) {
+    photos.update(list => {
+        const i = list.findIndex(p => p.id === photoId)
+        if (i < 0) return list
+        const next = list.slice()
+        next[i] = { ...next[i], ...partial }
+        return next
+    })
 }
 
 export async function loadAllPhotos() {
     try {
+        hydrateGeneration++
         const firstPage = await invoke<Photo[]>('get_all_photos', {
             params: { limit: PAGE_SIZE, offset: 0 }
         })
         photos.set(firstPage || [])
         hasMorePhotos.set((firstPage || []).length >= PAGE_SIZE)
 
-        // Fetch total count from backend (cheap COUNT query)
         try {
             const count = await invoke<number>('get_photo_count')
             totalPhotoCount.set(count)
-        } catch { /* fallback: count unknown */ }
+        } catch { /* ignore */ }
 
-        // Refresh source directory counts
         try {
             const libs = await invoke<SourceDirectory[]>('get_libraries')
             if (libs) sourceDirectories.set(libs)
         } catch { /* ignore */ }
+
+        scheduleIdleHydration()
     } catch (err) {
         console.error('Failed to load photos:', err)
+    }
+}
+
+export async function loadTrashPhotos() {
+    try {
+        hydrateGeneration++
+        const firstPage = await invoke<Photo[]>('get_trash_photos', {
+            params: { limit: PAGE_SIZE, offset: 0 }
+        })
+        photos.set(firstPage || [])
+        hasMorePhotos.set((firstPage || []).length >= PAGE_SIZE)
+        scheduleIdleHydration()
+    } catch (err) {
+        console.error('Failed to load trash:', err)
     }
 }
 
@@ -604,7 +722,8 @@ export async function loadMorePhotos() {
     isLoadingMore.set(true)
     try {
         const currentCount = get(photos).length
-        const nextPage = await invoke<Photo[]>('get_all_photos', {
+        const cmd = get(activeSection) === 'trash' ? 'get_trash_photos' : 'get_all_photos'
+        const nextPage = await invoke<Photo[]>(cmd, {
             params: { limit: PAGE_SIZE, offset: currentCount }
         })
         if (!nextPage || nextPage.length === 0) {
@@ -634,11 +753,7 @@ export async function loadMorePhotos() {
 export async function toggleFavorite(photoId: number): Promise<boolean> {
     try {
         const isFav = await invoke<boolean>('toggle_favorite', { photoId })
-        // Update local store
-        photos.update(list => list.map(p =>
-            p.id === photoId ? { ...p, isFavorite: isFav } : p
-        ))
-        // Also update selectedPhoto if it matches
+        patchPhoto(photoId, { isFavorite: isFav })
         selectedPhoto.update(p =>
             p && p.id === photoId ? { ...p, isFavorite: isFav } : p
         )
@@ -654,8 +769,13 @@ export async function toggleFavorite(photoId: number): Promise<boolean> {
 export async function deletePhotos(photoIds: number[]) {
     try {
         await invoke('soft_delete_photos', { photoIds })
-        photos.update(list => list.filter(p => !photoIds.includes(p.id)))
+        if (get(activeSection) === 'trash') {
+            photoIds.forEach(id => patchPhoto(id, { isDeleted: true }))
+        } else {
+            photos.update(list => list.filter(p => !photoIds.includes(p.id)))
+        }
         selectedPhoto.update(p => p && photoIds.includes(p.id) ? null : p)
+        clearSelection()
     } catch (err) {
         console.error('Failed to delete photos:', err)
     }
@@ -664,7 +784,8 @@ export async function deletePhotos(photoIds: number[]) {
 export async function restorePhotos(photoIds: number[]) {
     try {
         await invoke('restore_photos', { photoIds })
-        await loadAllPhotos()
+        photos.update(list => list.filter(p => !photoIds.includes(p.id)))
+        clearSelection()
     } catch (err) {
         console.error('Failed to restore photos:', err)
     }

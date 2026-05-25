@@ -10,10 +10,12 @@
 
 <script lang="ts">
     import { onMount, onDestroy, tick } from "svelte";
+    import { get } from "svelte/store";
     import {
         groupedPhotos,
         filteredPhotos,
         selectedPhoto,
+        focusedPhotoId,
         appSettings,
         viewMode,
         updateSettings,
@@ -26,6 +28,8 @@
         getThumbnail,
         convertFileSource,
     } from "../lib/store";
+
+    export let useMosaic = true;
     import { getCachedThumb, cacheThumb } from "../lib/thumbnailCache";
     import { calculateMosaicLayout, getMosaicTotalHeight, isMosaicDateBreak, type MosaicItem, type MosaicRow, type PhotoLike } from "../lib/mosaicLayout";
     import DateBreak from "./DateBreak.svelte";
@@ -35,6 +39,10 @@
     type MosaicItemP = MosaicItem<Photo>;
 
     $: columnCount = getColumnCount($appSettings.gridZoom);
+    $: isMosaicMode = useMosaic && $appSettings.layoutMode === "expressive";
+    $: allowAmbient =
+        $appSettings.expressiveTier === "full" ||
+        ($appSettings.expressiveTier === "balanced" && !prefersReduced);
 
     function getColumnCount(zoom: number): number {
         switch (zoom) {
@@ -153,7 +161,7 @@
         isList: boolean = false
     ) {
         const rows: VirtualRow[] = [];
-        const isExpressive = !isList && $appSettings.layoutMode === 'expressive';
+        const isExpressive = !isList && isMosaicMode;
         const gap = $appSettings.layoutMode === 'compact' ? 2 : isExpressive ? 6 : 4;
         const headerHeight = $appSettings.layoutMode === 'compact' ? 30 : 40;
         const sectionGap = $appSettings.layoutMode === 'compact' ? 8 : isExpressive ? 0 : 32;
@@ -269,7 +277,7 @@
 
     // Rebuild layout when data or settings change
     $: {
-        if ($appSettings.layoutMode === 'expressive') {
+        if (isMosaicMode) {
             buildMosaicLayout($filteredPhotos, containerWidth);
             computeVisibleMosaic();
         } else {
@@ -281,7 +289,7 @@
     }
 
     // Effective total height for virtual scroll spacer
-    $: effectiveTotalHeight = $appSettings.layoutMode === 'expressive' ? mosaicTotalHeight : totalHeight;
+    $: effectiveTotalHeight = isMosaicMode ? mosaicTotalHeight : totalHeight;
 
     // ── Scroll handler (rAF-throttled) ──
     let rafId: number = 0;
@@ -299,7 +307,7 @@
             lastScrollY = newTop;
             scrollTop = newTop;
 
-            if ($appSettings.layoutMode === 'expressive') {
+            if (isMosaicMode) {
                 computeVisibleMosaic();
                 sampleAmbientColor();
                 if (scrollTop + containerHeight >= mosaicTotalHeight - 600 && $hasMorePhotos && !$isLoadingMore) {
@@ -327,7 +335,7 @@
                 const centerPhoto = row.photos[Math.floor(row.photos.length / 2)];
                 if (centerPhoto) {
                     const cached = getCachedThumb(centerPhoto.photo.path);
-                    if (cached) updateAmbientFromThumb(cached);
+                    if (cached && allowAmbient) updateAmbientFromThumb(cached);
                 }
                 break;
             }
@@ -350,7 +358,10 @@
     }
 
     // Parallax offset (5% scroll lag, only in expressive mode)
-    $: parallaxOffset = ($appSettings.layoutMode === 'expressive' && !prefersReduced) ? scrollTop * 0.05 : 0;
+    $: parallaxOffset =
+        isMosaicMode && $appSettings.expressiveTier === "full" && !prefersReduced
+            ? scrollTop * 0.05
+            : 0;
 
     // ── Viewport-Aware Lazy Loading (Single Shared Observer) ──
     const cardPhotoMap = new Map<Element, Photo>();
@@ -471,34 +482,69 @@
         }
     }
 
+    function scrollPhotoIntoView(photoId: number) {
+        const el = scrollContainer?.querySelector(`[data-photo-id="${photoId}"]`);
+        if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    function moveFocus(delta: number) {
+        const list = get(filteredPhotos);
+        if (!list.length) return;
+        let idx = list.findIndex((p) => p.id === get(focusedPhotoId));
+        if (idx < 0) idx = 0;
+        else idx = Math.max(0, Math.min(list.length - 1, idx + delta));
+        focusedPhotoId.set(list[idx].id);
+        scrollPhotoIntoView(list[idx].id);
+    }
+
     // ── Keyboard Navigation ──
     function handleKeydown(e: KeyboardEvent) {
+        if ((e.target as HTMLElement)?.closest?.("input, textarea, select")) return;
+        const list = get(filteredPhotos);
+        if (e.key === "j" || e.key === "k" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+            if (list.length) {
+                e.preventDefault();
+                const d =
+                    e.key === "j" || e.key === "ArrowDown" ? 1 : -1;
+                moveFocus(d);
+                return;
+            }
+        }
+        if (e.key === "Enter" && get(focusedPhotoId)) {
+            const p = list.find((x) => x.id === get(focusedPhotoId));
+            if (p) openPhoto(p);
+            return;
+        }
         if (!scrollContainer) return;
         const step = itemSize + 4;
         switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                scrollContainer.scrollTop += step;
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                scrollContainer.scrollTop -= step;
-                break;
-            case 'PageDown':
+            case "PageDown":
                 e.preventDefault();
                 scrollContainer.scrollTop += containerHeight * 0.8;
                 break;
-            case 'PageUp':
+            case "PageUp":
                 e.preventDefault();
                 scrollContainer.scrollTop -= containerHeight * 0.8;
                 break;
-            case 'Home':
+            case "Home":
                 e.preventDefault();
                 scrollContainer.scrollTop = 0;
                 break;
-            case 'End':
+            case "End":
                 e.preventDefault();
                 scrollContainer.scrollTop = totalHeight;
+                break;
+            case "ArrowDown":
+                if (!list.length) {
+                    e.preventDefault();
+                    scrollContainer.scrollTop += step;
+                }
+                break;
+            case "ArrowUp":
+                if (!list.length) {
+                    e.preventDefault();
+                    scrollContainer.scrollTop -= step;
+                }
                 break;
         }
     }
@@ -510,14 +556,14 @@
 <div
     class="photo-grid-container"
     class:layout-compact={$appSettings.layoutMode === "compact" && $viewMode !== "list"}
-    class:layout-expressive={$appSettings.layoutMode === "expressive"}
-    class:layout-list={$viewMode === "list" && $appSettings.layoutMode !== "expressive"}
+    class:layout-expressive={isMosaicMode}
+    class:layout-list={$viewMode === "list" && !isMosaicMode}
     on:wheel={handleWheel}
     bind:this={scrollContainer}
 >
     <!-- Virtual scroll wrapper -->
     <div class="virtual-scroll-spacer" style="height: {effectiveTotalHeight}px; position: relative;">
-        {#if $appSettings.layoutMode === 'expressive'}
+        {#if isMosaicMode}
             <!-- Mosaic layout for expressive mode -->
             {#each visibleMosaicItems as item, idx (isMosaicDateBreak(item) ? `db-${item.yOffset}` : `mr-${item.yOffset}`)}
                 {#if isMosaicDateBreak(item)}
@@ -533,6 +579,8 @@
                             class="mosaic-photo"
                             class:mosaic-hero={item.isHero}
                             class:selected={$selectedPhotoIds.has(lp.photo.id)}
+                            class:focus-halo={$focusedPhotoId === lp.photo.id}
+                            data-photo-id={lp.photo.id}
                             on:click={() => openPhoto(lp.photo)}
                             on:pointerdown={() => handlePointerDown(lp.photo)}
                             on:pointerup={handlePointerUp}
@@ -605,6 +653,8 @@
                                 <button
                                     class="photo-card group relative"
                                     class:selected={$selectedPhotoIds.has(photo.id)}
+                                    class:focus-halo={$focusedPhotoId === photo.id}
+                                    data-photo-id={photo.id}
                                     on:click={() => openPhoto(photo)}
                                     title={photo.filename}
                                     use:lazyLoad={photo}

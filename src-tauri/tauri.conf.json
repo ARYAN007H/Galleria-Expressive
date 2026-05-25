@@ -26,7 +26,11 @@
                 "scope": [
                     "$APP_CACHE_DIR/**",
                     "$APP_DATA_DIR/**",
+                    "$LOCALAPPDATA/galleria-expressive/**",
                     "$HOME/.cache/galleria-expressive/**",
+                    "$PICTURE/**",
+                    "$DOWNLOAD/**",
+                    "$DOCUMENT/**",
                     "$HOME/Pictures/**",
                     "$HOME/Downloads/**",
                     "$HOME/Documents/**",
@@ -50,7 +54,17 @@
         ],
         "category": "Photography",
         "shortDescription": "Photo and media viewer with Liquid Glass UI",
-        "longDescription": "View and organize photos and media. Select a directory, scan and categorize, search with natural language."
+        "longDescription": "View and organize photos and media. Select a directory, scan and categorize, search with natural language.",
+        "windows": {
+            "nsis": {
+                "sidebarImage": "icons/installer-sidebar.bmp",
+                "headerImage": "icons/installer-header.bmp",
+                "installerIcon": "icons/icon.ico",
+                "installMode": "both",
+                "startMenuFolder": "Galleria Expressive",
+                "compression": "lzma"
+            }
+        }
     },
     "plugins": {
         "updater": {

@@ -275,6 +275,32 @@
                             </label>
                         </div>
 
+                        <div class="setting-row column">
+                            <div class="setting-info">
+                                <span class="setting-icon">{@html icons.settings}</span>
+                                <div>
+                                    <p class="setting-label">Expressive Tier</p>
+                                    <p class="setting-desc">
+                                        Visual quality vs performance (auto-set for 8GB RAM)
+                                    </p>
+                                </div>
+                            </div>
+                            <select
+                                class="tier-select"
+                                value={$appSettings.expressiveTier}
+                                on:change={(e) =>
+                                    updateSettings({
+                                        expressiveTier: e.currentTarget
+                                            .value as import("../lib/store").ExpressiveTier,
+                                        tierAutoDetected: false,
+                                    })}
+                            >
+                                <option value="essential">Essential — fastest</option>
+                                <option value="balanced">Balanced — recommended</option>
+                                <option value="full">Full — cinematic</option>
+                            </select>
+                        </div>
+
                         <div class="setting-row">
                             <div class="setting-info">
                                 <span class="setting-icon"

@@ -8,6 +8,10 @@
         showSettings,
         filteredCount,
         photoCount,
+        showChronicleAtlas,
+        showCuratorDesk,
+        loadAllPhotos,
+        searchWithFacets,
     } from "../lib/store";
 
     let searchInput: HTMLInputElement;
@@ -104,6 +108,20 @@
     </div>
 
     <div class="toolbar-right">
+        <button
+            class="m3-icon-btn"
+            title="Chronicle Atlas"
+            on:click={() => showChronicleAtlas.set(true)}
+        >
+            {@html icons.clock || icons.search}
+        </button>
+        <button
+            class="m3-icon-btn"
+            title="Curator's Desk"
+            on:click={() => showCuratorDesk.set(true)}
+        >
+            {@html icons.folder || icons.grid}
+        </button>
         {#if $appSettings.layoutMode !== 'expressive'}
             <div class="view-toggles">
                 <button

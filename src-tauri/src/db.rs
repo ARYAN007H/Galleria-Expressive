@@ -92,6 +92,25 @@ pub struct AlbumRecord {
     pub cover_path: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoLocation {
+    pub id: i64,
+    pub gps_lat: f64,
+    pub gps_lon: f64,
+    pub thumb_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoVariant {
+    pub id: i64,
+    pub photo_id: i64,
+    pub name: String,
+    pub edit_params: String,
+    pub created_at: String,
+}
+
 impl Database {
     pub fn new(db_path: &Path) -> SqlResult<Self> {
         let conn = Connection::open(db_path)?;
@@ -209,7 +228,21 @@ impl Database {
             ("thumb_path", "ALTER TABLE photos ADD COLUMN thumb_path TEXT"),
             ("date_modified_unix", "ALTER TABLE photos ADD COLUMN date_modified_unix INTEGER NOT NULL DEFAULT 0"),
             ("edit_params", "ALTER TABLE photos ADD COLUMN edit_params TEXT"),
+            ("phash", "ALTER TABLE photos ADD COLUMN phash TEXT"),
         ];
+
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS photo_variants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                photo_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                edit_params TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE
+            );
+            "#,
+        )?;
 
         for (col, sql) in migrations {
             if !columns.contains(&col.to_string()) {
@@ -1054,5 +1087,391 @@ impl Database {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(e),
         }
+    }
+
+    // ── Trash listing ──
+
+    pub fn get_trash_photos_all_libraries(
+        &self,
+        library_ids: &[i64],
+        limit: i64,
+        offset: i64,
+    ) -> SqlResult<Vec<PhotoRecord>> {
+        if library_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
+        let sql = format!(
+            "SELECT p.id, p.path, p.filename, p.folder_rel, p.taken_at, p.modified_at, p.media_type, p.size_bytes, p.width, p.height, \
+             p.is_favorite, p.is_deleted, p.deleted_at, p.camera_make, p.camera_model, p.lens, p.iso, p.shutter_speed, p.aperture, p.focal_length, p.gps_lat, p.gps_lon, \
+             l.root_path \
+             FROM photos p JOIN library l ON l.id = p.library_id \
+             WHERE p.library_id IN ({}) AND p.is_deleted = 1 \
+             ORDER BY p.deleted_at DESC, p.path LIMIT ?{} OFFSET ?{}",
+            placeholders.join(", "),
+            library_ids.len() + 1,
+            library_ids.len() + 2,
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = library_ids
+            .iter()
+            .map(|id| Box::new(*id) as Box<dyn rusqlite::ToSql>)
+            .collect();
+        params.push(Box::new(limit));
+        params.push(Box::new(offset));
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let mut rows = stmt.query(param_refs.as_slice())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let root_path: String = row.get(22)?;
+            let source = std::path::Path::new(&root_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Library")
+                .to_string();
+            out.push(PhotoRecord {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                filename: row.get(2)?,
+                folder_rel: row.get(3)?,
+                taken_at: row.get(4)?,
+                modified_at: row.get(5)?,
+                media_type: row.get(6)?,
+                size_bytes: row.get(7)?,
+                width: row.get(8)?,
+                height: row.get(9)?,
+                source,
+                is_favorite: row.get::<_, i32>(10).unwrap_or(0) != 0,
+                is_deleted: true,
+                deleted_at: row.get(12)?,
+                camera_make: row.get(13)?,
+                camera_model: row.get(14)?,
+                lens: row.get(15)?,
+                iso: row.get(16)?,
+                shutter_speed: row.get(17)?,
+                aperture: row.get(18)?,
+                focal_length: row.get(19)?,
+                gps_lat: row.get(20)?,
+                gps_lon: row.get(21)?,
+            });
+        }
+        Ok(out)
+    }
+
+    pub fn delete_photos_by_paths(&self, paths: &[String]) -> SqlResult<Vec<i64>> {
+        let conn = self.conn.lock().unwrap();
+        let mut ids = Vec::new();
+        for path in paths {
+            if let Ok(id) = conn.query_row(
+                "SELECT id FROM photos WHERE path = ?1",
+                [path],
+                |row| row.get::<_, i64>(0),
+            ) {
+                conn.execute("DELETE FROM photo_tags WHERE photo_id = ?1", [id])?;
+                conn.execute("DELETE FROM album_photos WHERE photo_id = ?1", [id])?;
+                conn.execute("DELETE FROM photos WHERE id = ?1", [id])?;
+                ids.push(id);
+            }
+        }
+        Ok(ids)
+    }
+
+    pub fn find_library_id_for_path(&self, file_path: &str) -> SqlResult<Option<(i64, String)>> {
+        let libraries = self.get_all_libraries()?;
+        let path = std::path::Path::new(file_path);
+        for lib in libraries {
+            let root = std::path::Path::new(&lib.root_path);
+            if path.starts_with(root) {
+                return Ok(Some((lib.id, lib.root_path)));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn get_timeline_density(&self, library_ids: &[i64], year: Option<i32>) -> SqlResult<Vec<CategoryMonth>> {
+        if library_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
+        let mut sql = format!(
+            "SELECT CAST(strftime('%Y', COALESCE(taken_at, modified_at)) AS INTEGER) as y, \
+             CAST(strftime('%m', COALESCE(taken_at, modified_at)) AS INTEGER) as m, COUNT(*) \
+             FROM photos WHERE library_id IN ({}) AND is_deleted = 0",
+            placeholders.join(", ")
+        );
+        if let Some(y) = year {
+            sql.push_str(&format!(" AND strftime('%Y', COALESCE(taken_at, modified_at)) = '{}'", y));
+        }
+        sql.push_str(" GROUP BY y, m ORDER BY y DESC, m DESC");
+        let mut stmt = conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::ToSql> = library_ids
+            .iter()
+            .map(|id| id as &dyn rusqlite::ToSql)
+            .collect();
+        let mut rows = stmt.query(param_refs.as_slice())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(CategoryMonth {
+                year: row.get(0)?,
+                month: row.get(1)?,
+                count: row.get(2)?,
+            });
+        }
+        Ok(out)
+    }
+
+    pub fn get_photo_locations(
+        &self,
+        library_ids: &[i64],
+        limit: i64,
+    ) -> SqlResult<Vec<PhotoLocation>> {
+        if library_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
+        let sql = format!(
+            "SELECT id, gps_lat, gps_lon, thumb_path FROM photos \
+             WHERE library_id IN ({}) AND is_deleted = 0 AND gps_lat IS NOT NULL AND gps_lon IS NOT NULL \
+             LIMIT ?{}",
+            placeholders.join(", "),
+            library_ids.len() + 1
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = library_ids
+            .iter()
+            .map(|id| Box::new(*id) as Box<dyn rusqlite::ToSql>)
+            .collect();
+        params.push(Box::new(limit));
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let mut rows = stmt.query(param_refs.as_slice())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(PhotoLocation {
+                id: row.get(0)?,
+                gps_lat: row.get(1)?,
+                gps_lon: row.get(2)?,
+                thumb_path: row.get(3)?,
+            });
+        }
+        Ok(out)
+    }
+
+    pub fn set_photo_phash(&self, photo_id: i64, phash: &str) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE photos SET phash = ?1 WHERE id = ?2",
+            rusqlite::params![phash, photo_id],
+        )?;
+        Ok(())
+    }
+
+    pub fn find_duplicate_groups(&self, library_ids: &[i64], threshold: u32) -> SqlResult<Vec<Vec<i64>>> {
+        if library_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
+        let sql = format!(
+            "SELECT id, phash FROM photos WHERE library_id IN ({}) AND is_deleted = 0 AND phash IS NOT NULL",
+            placeholders.join(", ")
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::ToSql> = library_ids
+            .iter()
+            .map(|id| id as &dyn rusqlite::ToSql)
+            .collect();
+        let mut rows = stmt.query(param_refs.as_slice())?;
+        let mut items: Vec<(i64, u64)> = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id: i64 = row.get(0)?;
+            let phash_str: String = row.get(1)?;
+            if let Ok(val) = u64::from_str_radix(&phash_str, 16) {
+                items.push((id, val));
+            }
+        }
+        let mut groups: Vec<Vec<i64>> = Vec::new();
+        let mut used = vec![false; items.len()];
+        for i in 0..items.len() {
+            if used[i] {
+                continue;
+            }
+            let mut group = vec![items[i].0];
+            used[i] = true;
+            for j in (i + 1)..items.len() {
+                if used[j] {
+                    continue;
+                }
+                let dist = (items[i].1 ^ items[j].1).count_ones();
+                if dist <= threshold {
+                    group.push(items[j].0);
+                    used[j] = true;
+                }
+            }
+            if group.len() > 1 {
+                groups.push(group);
+            }
+        }
+        Ok(groups)
+    }
+
+    // ── Photo variants ──
+
+    pub fn create_variant(&self, photo_id: i64, name: &str, edit_params: &str) -> SqlResult<PhotoVariant> {
+        let conn = self.conn.lock().unwrap();
+        let now = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
+        conn.execute(
+            "INSERT INTO photo_variants (photo_id, name, edit_params, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![photo_id, name, edit_params, now],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(PhotoVariant {
+            id,
+            photo_id,
+            name: name.to_string(),
+            edit_params: edit_params.to_string(),
+            created_at: now,
+        })
+    }
+
+    pub fn get_variants(&self, photo_id: i64) -> SqlResult<Vec<PhotoVariant>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, photo_id, name, edit_params, created_at FROM photo_variants WHERE photo_id = ?1 ORDER BY created_at",
+        )?;
+        let mut rows = stmt.query([photo_id])?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            out.push(PhotoVariant {
+                id: row.get(0)?,
+                photo_id: row.get(1)?,
+                name: row.get(2)?,
+                edit_params: row.get(3)?,
+                created_at: row.get(4)?,
+            });
+        }
+        Ok(out)
+    }
+
+    pub fn delete_variant(&self, variant_id: i64) -> SqlResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM photo_variants WHERE id = ?1", [variant_id])?;
+        Ok(())
+    }
+
+    pub fn search_with_facets(
+        &self,
+        library_ids: &[i64],
+        query: Option<&str>,
+        camera_make: Option<&str>,
+        camera_model: Option<&str>,
+        media_type: Option<&str>,
+        limit: i64,
+    ) -> SqlResult<Vec<PhotoRecord>> {
+        if library_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn.lock().unwrap();
+        let placeholders: Vec<String> = library_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
+        let mut sql = format!(
+            "SELECT p.id, p.path, p.filename, p.folder_rel, p.taken_at, p.modified_at, p.media_type, p.size_bytes, p.width, p.height, \
+             p.is_favorite, p.is_deleted, p.deleted_at, p.camera_make, p.camera_model, p.lens, p.iso, p.shutter_speed, p.aperture, p.focal_length, p.gps_lat, p.gps_lon, \
+             l.root_path \
+             FROM photos p JOIN library l ON l.id = p.library_id \
+             WHERE p.library_id IN ({}) AND p.is_deleted = 0",
+            placeholders.join(", ")
+        );
+        let mut extra: Vec<String> = Vec::new();
+        if let Some(q) = query {
+            if !q.is_empty() {
+                sql.push_str(" AND (p.filename LIKE ? OR p.path LIKE ? OR p.folder_rel LIKE ?)");
+                let pat = format!("%{}%", q.replace('%', "\\%"));
+                extra.push(pat.clone());
+                extra.push(pat.clone());
+                extra.push(pat);
+            }
+        }
+        if let Some(m) = camera_make {
+            sql.push_str(" AND p.camera_make LIKE ?");
+            extra.push(format!("%{}%", m));
+        }
+        if let Some(m) = camera_model {
+            sql.push_str(" AND p.camera_model LIKE ?");
+            extra.push(format!("%{}%", m));
+        }
+        if let Some(t) = media_type {
+            sql.push_str(" AND p.media_type = ?");
+            extra.push(t.to_string());
+        }
+        sql.push_str(&format!(" ORDER BY COALESCE(p.taken_at, p.modified_at) DESC LIMIT ?{}", library_ids.len() + extra.len() + 1));
+
+        let mut stmt = conn.prepare(&sql)?;
+        let mut param_refs: Vec<Box<dyn rusqlite::ToSql>> = library_ids
+            .iter()
+            .map(|id| Box::new(*id) as Box<dyn rusqlite::ToSql>)
+            .collect();
+        for e in &extra {
+            param_refs.push(Box::new(e.clone()));
+        }
+        param_refs.push(Box::new(limit));
+        let refs: Vec<&dyn rusqlite::ToSql> = param_refs.iter().map(|p| p.as_ref()).collect();
+        let mut rows = stmt.query(refs.as_slice())?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next()? {
+            let root_path: String = row.get(22)?;
+            let source = std::path::Path::new(&root_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Library")
+                .to_string();
+            out.push(PhotoRecord {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                filename: row.get(2)?,
+                folder_rel: row.get(3)?,
+                taken_at: row.get(4)?,
+                modified_at: row.get(5)?,
+                media_type: row.get(6)?,
+                size_bytes: row.get(7)?,
+                width: row.get(8)?,
+                height: row.get(9)?,
+                source,
+                is_favorite: row.get::<_, i32>(10).unwrap_or(0) != 0,
+                is_deleted: row.get::<_, i32>(11).unwrap_or(0) != 0,
+                deleted_at: row.get(12)?,
+                camera_make: row.get(13)?,
+                camera_model: row.get(14)?,
+                lens: row.get(15)?,
+                iso: row.get(16)?,
+                shutter_speed: row.get(17)?,
+                aperture: row.get(18)?,
+                focal_length: row.get(19)?,
+                gps_lat: row.get(20)?,
+                gps_lon: row.get(21)?,
+            });
+        }
+        Ok(out)
     }
 }

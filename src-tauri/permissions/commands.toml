@@ -197,3 +197,33 @@ commands.allow = ["scan_directory"]
 identifier = "get-system-info"
 description = "Get system info for performance mode"
 commands.allow = ["get_system_info"]
+
+[[permission]]
+identifier = "get-trash-photos"
+description = "Get trash photos"
+commands.allow = ["get_trash_photos"]
+
+[[permission]]
+identifier = "get-timeline-density"
+description = "Timeline density for Chronicle Atlas"
+commands.allow = ["get_timeline_density"]
+
+[[permission]]
+identifier = "get-photo-locations"
+description = "GPS locations for map"
+commands.allow = ["get_photo_locations"]
+
+[[permission]]
+identifier = "search-with-facets"
+description = "Facet search"
+commands.allow = ["search_with_facets"]
+
+[[permission]]
+identifier = "photo-variants"
+description = "Photo develop variants"
+commands.allow = ["create_photo_variant", "get_photo_variants", "delete_photo_variant"]
+
+[[permission]]
+identifier = "curation"
+description = "Duplicate detection"
+commands.allow = ["get_duplicate_groups", "run_phash_indexing"]
